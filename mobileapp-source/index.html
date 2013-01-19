@@ -105,7 +105,8 @@
 			var filter_subtype = $("#ddlSearch").val();
 			var username = "";
 			var lid = "";
-			$("#listItems").prepend("Loading items...")
+			//$("#listItems").prepend("Loading items...")
+			loadingMsg(true);
 
 			/*
 				JSON call
@@ -145,6 +146,7 @@
 				}
 				$("#listItems").listview("refresh");
 				loadMarkersFromList();
+				loadingMsg(false);
 			});
 		}
 
@@ -236,22 +238,38 @@
 			}
 		}
 
+		function loadingMsg(show){
+			if(show) {
+				$.mobile.loading( 'show', {
+						text: 'Loading...',
+						textVisible: true,
+						theme: 'a',
+						textonly: false,
+						html: null
+				});
+			}
+			else{
+				$.mobile.loading( 'hide' );
+			}
+
+		}
 		function openSearchPage() {
 			$.mobile.changePage( "#search-page", { transition: "slide"} );
 			$(MAP_ID).gmap('refresh', 1);
 		}
-                function openMapPage() {
-                        $.mobile.changePage( "#map-page", { transition: "slide"} );
+        function openMapPage() {
+            $.mobile.changePage( "#map-page", { transition: "slide"} );
 			$(MAP_ID).gmap('refresh', 1);
-                }
+        }
 		
 		$(document).ready(function () {
 
 			// item details page - 1
 			$("a.listing_link").live('click',function(e) {
+				loadingMsg(true);
 				$.getJSON('http://communityfinder.net/data/get_markers.php?format=json&listing_id=' + $(this).attr("data-parm"), function(data) {
 					
-					console.log(data.markers[0]);
+					//console.log(data.markers[0]);
 	
 					
 					$('#name').html(data.markers[0].name);
@@ -263,13 +281,14 @@
 					$('#phone').attr('href', 'tel:' + data.markers[0].phone);
 					
 					var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
-					value = value.replace("http://", ""); // value = 9:61
+					if(value) value = value.replace("http://", ""); // value = 9:61
 
 					$('#www').html(value);
 					$('#www').attr('href', 'http://' + value);
 
 					$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
 					$('#map_canvas_small').gmap('option', 'zoom', 14);
+					loadingMsg(false);
 
 				});
 			});
