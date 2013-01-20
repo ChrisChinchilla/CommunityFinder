@@ -26,7 +26,9 @@
 		app.initialize();
 	</script>
 	<!-- phonegap - 0 -->
-
+	<style type="text/css">
+		.template { display: none;}
+	</style>
 <script>
 	/////////////////////////////////////////////
 	// to add
@@ -52,6 +54,9 @@
 	var DEFAULT_ZOOM = 15;
 	var MAP_ID = "#map_canvas";
 	var drag_timer;
+	var config = {};
+	config.prefix = 'http://communityfinder.net/';
+	//config.prefix = '../webapp-source/'; // for local testing
 		
 		// draw map centred on location. retrieve results
 		function mapLocation(location){
@@ -88,7 +93,67 @@
 				}
 			});
 		}
-		
+		function register(){
+
+			var email = form.email.value;
+			var password = form.password.value;
+			var full_name = form.full_name.value;
+			var username = form.username.value;
+		   
+			if(email != '' && password != '' && full_name != '' && username != '') {
+				$.post('data/register.php', {email: email, password: password, full_name: full_name, username: username}, function(data) {
+					$("#register_wait").css("display", "none");
+					if($(data).find("response_state").attr("success") == 'true') {
+						//if(doOnSuccess) {doOnSuccess();}	
+						popupMsg("Registered");
+					}
+					else if($(data).find("error").attr("error_code") == 'email_exists') {
+						if(doOnFailure) {doOnFailure('Sorry, this email address has already registered!');}
+					}
+					else if($(data).find("error").attr("error_code") == 'username_exists') {
+						if(doOnFailure) {doOnFailure('Sorry, this username has already registered!');}
+					}
+					else if($(data).find("error").attr("error_code") == 'db_error') {
+						if(doOnFailure) {doOnFailure('Sorry, there was a DB Error, please try again later.');}
+					}
+				});
+			}
+			else {
+				if(doOnFailure) {doOnFailure('Sorry, you must fill in all fields to register!');}			 
+			}
+		}
+		function doOnFailure(str)
+		{
+			popupMsg(str);
+		}
+		function doOnSuccess(str){
+			popupMsg(str);
+		}
+		function login(){
+			var email_or_username = $("#login-user").val();
+			var password = $("#login-pass").val();
+				 
+			if(email_or_username != '' && password != '') {
+				$.post(config.prefix + 'data/login.php', {email_or_username:email_or_username, password:password}, function(data) {
+					//$("#register_wait").css("display", "none");
+					if($(data).find("response_state").attr("success") == 'true') {
+						//that.email = $(data).find("user").attr("email");
+						//that.full_name = $(data).find("user").attr("full_name");
+						//that.username = $(data).find("user").attr("username");
+						
+						//if(doOnSuccess) {doOnSuccess(that.username);}
+						popupMsg("Logged in");
+						openSearchPage();
+					}
+					else {
+						if(doOnFailure) {doOnFailure('Incorext username or password, please try again.');}
+					}
+				});
+			}
+			else {
+				doOnFailure('You need to provide your email and password to log in.');		 
+			}			
+		}
 		// does the search based on a location
 		// calls backend API
 		function loadMarkers(location){
@@ -122,7 +187,7 @@
 					listing_id=		
 			//*/		
 			
-			$.getJSON('http://communityfinder.net/data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid}, function(data) {
+			$.getJSON(config.prefix + 'data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid}, function(data) {
 				$("#listItems").empty();
 				$(MAP_ID).gmap('clear', 'markers');
 
@@ -188,7 +253,7 @@
 		
 		function loadCategories(){
 			var restrict_subtype = '';
-			$.get('http://communityfinder.net/data/get_subtypes.php',{restrict_subtype: restrict_subtype}, function(data) {
+			$.get(config.prefix + 'data/get_subtypes.php',{restrict_subtype: restrict_subtype}, function(data) {
 				$("#ddlSearch").html("");
 				$("#ddlSearch").append(jQuery("<option>").attr("value", "").html("-- Any --"));
 				$(data).find('icon').each(function(i) {	
@@ -251,23 +316,191 @@
 			else{
 				$.mobile.loading( 'hide' );
 			}
-
+		}
+		function popupMsg(msg){
+			$.mobile.loading( 'show', {
+					text: msg,
+					textVisible: true,
+					theme: 'a',
+					textonly: true,
+					html: null
+			});
 		}
 		function openSearchPage() {
 			$.mobile.changePage( "#search-page", { transition: "slide"} );
 			$(MAP_ID).gmap('refresh', 1);
 		}
-        function openMapPage() {
-            $.mobile.changePage( "#map-page", { transition: "slide"} );
+		function openMapPage() {
+			$.mobile.changePage( "#map-page", { transition: "slide"} );
 			$(MAP_ID).gmap('refresh', 1);
-        }
+		}
+		function openLoginPage() {
+			$.mobile.changePage( "#login-page", { transition: "slide"} );
+		}
+		function openRegisterPage() {
+			$.mobile.changePage( "#register-page", { transition: "slide"} );
+		}
+
+		function openCommentsPage(lid){
+			loadingMsg(true);
+			$.get(config.prefix+'data/get_marker_comments.php', {lid: lid}, function(data) {	
+				var flag = 0;
+
+				var list = $("#comments-page .list").eq(0);
+				var template = $("#comments-page").find(".template");
+				list.empty();
+				$(data).find('comment').each(function(i) {
+					flag = 1;
+					var comment_text = $(this).find('comment_text').text();
+					var username = $(this).find('username').text();
+					//var name = $(this).find('name').text();
+					var timestamp = $(this).find('timestamp').text();
+					
+					var row = template.clone();
+					row.removeClass("template");
+					row.find(".message").text(comment_text);
+					row.find(".user").text(username);
+					row.find(".date").text(timestamp);
+					list.append(row);
+					//$("#listing_comments_results").append('<p><a href="#" onclick="application.panelManager.openProfileWindow(\'' + username + '\');return(false);">' + username + '</a>:' + name + ' (' + timestamp + ')<br/>' + comment_text + '</p>');									
+				
+				});
+				if(flag == 0) {
+					var row = template.clone();
+					row.removeClass("template");
+					row.find(".message").text("No Comments Added");
+					row.find(".user").text("");
+					row.find(".date").text("");
+					list.append(row);
+					//$("#listing_comments_results").html('<p><b>No Comments Added</b><br/><br/>be the first to <a onclick="$(\'#listing_comments\').hide(); $(\'#listing_comments_add\').show(); return(false);" class="" style="" href="#" title="Add Comment">add a comment</a> about ' + that.name + '</p>');
+				}
+				//$("#listing_comments").show();
+				list.listview("refresh");
+				loadingMsg(false);
+				$.mobile.changePage( "#comments-page", { transition: "slide"} );
+			});				
+			
+		}
+		function openInboxPage(){
+			loadingMsg(true);
+
+			// if(this.isLoggedIn()) {
+			if(true) {
+				//$("#message-edit").hide("fast", function() { 
+				//	$("#message-inbox").slideDown("fast");
+				//	$("#message-edit").css('display', 'none');
+				//});
+
+				var list = $("#inbox-page .list").eq(0);
+				var template = $("#inbox-page").find(".template.row");
+				list.empty();
+
+				$.post(config.prefix+'data/get_all_conversations.php', {}, function(data) {
+					//$("#inbox_conversations").html('');
+					$(data).find('conversation').each(function(j){
+						var title = $(this).attr("title");
+						var conversation_id = $(this).attr("conversation_id");
+						var participants = $(this).attr("participants");
+						var timestamp = $(this).attr("timestamp");
+						var last_message = $(this).attr("last_message");
+						var read_flag = '';
+						/*
+						if($(this).attr("read_flag") == 0) {var read_flag = '<image src="images/unread_star.jpg"/>';}
+						var conversations_text = '<div class="listing_left" style="width: 5%; clear: left;">' + read_flag + '<input name="conversation_id" type="checkbox" value="' + conversation_id + '"/></div><div class="listing_left" style="width: 15%;">' + participants + '<br><div class="listing_sub">' + timestamp + '</div></div><div class="listing_main"><a href="#" onclick="application.user.refreshConversation(' + conversation_id + '); return(false);">' + title + ' &nbsp; &nbsp; (view message)</a><div class="listing_sub">' + last_message + '</div></div>';
+						$('<div class="listing_div"></div>').html(conversations_text).appendTo("#inbox_conversations");
+						*/
+
+						var row = template.clone();
+						row.removeClass("template");
+						row.find(".message").text(last_message);
+						row.find(".user").text(participants);
+						row.find(".date").text(timestamp);
+						row.find(".url").attr("data-url", conversation_id);
+						list.append(row);
+
+					});
+					try { list.listview("refresh"); } catch(err){}
+					loadingMsg(false);
+					$.mobile.changePage( "#inbox-page", { transition: "slide"} );
+				});
+			}	
+		}
+		$(document).on( "pagebeforechange", function( e, data ) {
+			if ( typeof data.toPage === "string" ) {
+					var u = $.mobile.path.parseUrl( data.toPage );
+					console.log("to page: " + data.toPage + "|" );
+					console.log(u.hash);
+					console.log(data);
+					if ( u.hash.search(/^#conversation-page/) !== -1 && false) {
+						//pageSelector = urlObj.hash.replace( /\?.*$/, "" );
+						
+						//openConversationPage
+						//e.preventDefault();
+					}
+			}
+		});		
+		function openConversationPage(conv_id){
+			loadingMsg(true);
+
+			//$('#inbox_tabs').tabs( 'select' , 0 );
+			//if(this.isLoggedIn()) {
+			if(true){
+				//$("#message-inbox").hide("fast", function() { 
+				//	$("#message-edit").slideDown("fast");	
+				//});
+				var list = $("#conversation-page .list").eq(0);
+				var template = $("#conversation-page").find(".template.row");
+				list.empty();
+				
+				$.post(config.prefix+'data/get_conversation.php', {conversation_id: conv_id}, function(data) {
+					var title = $(data).find('conversation').attr("title");
+					$("#inbox_conversation").html('<div class="listing_div"><div class="listing_left" style="width: 20%;">&nbsp;</div><div class="listing_main"><h3>' + title + '</h3></div>');
+					$(data).find('conversation_message').each(function(j){
+						var message = $(this).attr("message");
+						var user = $(this).attr("user");
+						var timestamp = $(this).attr("timestamp");
+
+						var row = template.clone();
+						row.removeClass("template");
+						row.find(".message").text(message);
+						row.find(".user").text(user);
+						row.find(".date").text(timestamp);
+						list.append(row);
+						//var message_text = '<div class="listing_left" style="width: 20%;">' + user + '<br><div class="listing_sub">' + timestamp + '</div></div><div class="listing_main">' + message + '</div>';
+						//$('<div class="listing_div"></div>').html(message_text).appendTo("#inbox_conversation");
+					});
+					//$("#inbox_conversation").append('<div class="listing_div"><div class="listing_left" style="width: 20%;">&nbsp;</div><div class="listing_main"><b>Reply: </b><br><form class="fg-form" action="#" name="replyform"><textarea name="reply" class="fg-input ui-corner-all" style="width:400px; height:100px; margin-bottom: 0.4em;"></textarea><br><button id="conversation_reply_button" type="button" class="fg-button ui-corner-all ui-state-default" onclick="application.user.conversationReply(' + conv_id + ', this.form.reply.value);">Send</button></form></div></div>');
+					list.listview("refresh");
+					loadingMsg(false);
+					$.mobile.changePage( "#conversation-page", { transition: "slide"} );
+
+				});
+			}
+		}
+		function isLoggedIn(){
+			$.post(config.prefix+'data/is_logged_in.php', {}, function(data) {
+				if($(data).find("response_state").attr("success") == 'true') {
+					console.log(data);
+					//that.email = $(data).find("user").attr("email");
+					//that.full_name = $(data).find("user").attr("full_name");
+					//that.username = $(data).find("user").attr("username");
+
+					//$(".show_logged_in").css("display", "block");
+					//$(".show_logged_out").css("display", "none");	
+					//$("span[id^='your_name']").html(that.full_name);
+				}
+			});	
+
+		}
 		
 		$(document).ready(function () {
-
+			$("#inbox-page ul.list a").live('click', function(e){
+				openConversationPage($(this).attr("data-url"));
+			});
 			// item details page - 1
 			$("a.listing_link").live('click',function(e) {
 				loadingMsg(true);
-				$.getJSON('http://communityfinder.net/data/get_markers.php?format=json&listing_id=' + $(this).attr("data-parm"), function(data) {
+				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + $(this).attr("data-parm"), function(data) {
 					
 					//console.log(data.markers[0]);
 	
@@ -347,9 +580,55 @@
 
 
 
+
 </script>
 </head> 
 <body> 
+	
+	<div data-role="page" id="login-page" data-add-back-btn="true">
+		<div data-role="header">
+			<h1>Login</h1>
+		</div>
+
+		<div data-role="content">
+			<div data-role="fieldcontain">
+				<label for="login-user">Username / Email:</label>
+	    		<input type="text" name="login-user" id="login-user" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="login-pass">Password:</label>
+	    		<input type="password" name="login-pass" id="login-pass" value=""  />
+			</div>	
+			<input type="button" value="Login" onClick="login()">
+		</div>
+	</div>
+	<div data-role="page" id="register-page" data-add-back-btn="true">
+		<div data-role="header">
+			<h1>Register</h1>
+		</div>
+		<div data-role="content">
+			<form>
+			<div data-role="fieldcontain">
+				<label for="register-email">Email:</label>
+	    		<input type="text" name="register-email" id="register-email" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-pass">Password:</label>
+	    		<input type="password" name="register-pass" id="register-pass" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-full-name">Full name:</label>
+	    		<input type="text" name="register-full-name" id="register-full-name" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-user">Username:</label>
+	    		<input type="text" name="register-user" id="register-user" value=""  />
+			</div>	
+			<input type="button" value="Register" onClick="register()">
+			</form>
+		</div>
+	</div>
+
 	<div data-role="page" id="search-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
 			<h1>CommunityFinder</h1>
@@ -359,6 +638,9 @@
                                 <ul>
                                         <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
                                         <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
+                                        <li><a href="#login-page" data-rel="dialog">Login</a></li>
+                                        <li><a href="#register-page" data-rel="dialog">Register</a></li>
+                                        <li><a href="#" onClick="openInboxPage()">Inbox</a></li>
                                         <li><a href="#" data-icon="gear">Settings</a></li>
                                         <li><a href="#" data-icon="arrow-r">More</a></li>
                                 </ul>
@@ -428,25 +710,21 @@
                         </div>
                 </div><!-- /header -->
 		<div data-role="content">
-		                                                <h1 id="name">CommunityFinder</h1>
-
+			<h1 id="name">CommunityFinder</h1>
 			<div class="ui-grid-a">
 				<div class="ui-block-a">
-                				<h3 id="type">
+                	<h3 id="type">
 						Category
 					</h3>
 			
                      <div id="map_canvas_small"></div>
 				</div>
 				<div class="ui-block-b">
-			<h5 id="address">
-				Street, Suburb, City, Postcode
-			</h5>
+					<h5 id="address">
+						Street, Suburb, City, Postcode
+					</h5>
 				</div>
 			</div>
-                                   
-
-	
 			<div id="phone">
 				<a href="tel:0400200700" target="_blank" data-transition="fade">
 					Phone
@@ -464,12 +742,116 @@
 				<a href="#" target="_blank" data-transition="fade">
 					Share link
 				</a>
-                		<h5 id="user">
-						Added by
-					</h5>
+				<!-- 
+					<a target="_blank" href="http://twitter.com/home?status=Just found St Johns Op Shop - Brunswick West. http://victoriacommunity.org/index.php?lid=7519">Tweet about it on Twitter</a>
+					<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://google.com" data-text="test">Tweet</a>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>	
+
+
+				
+New Sharing
+	Twitter: https://twitter.com/about/resources/buttons#tweet
+
+old code
+	var text_share = '<div class="info_window" style="height: 130px; overflow:hide;">'; 
+	text_share += '<p><img style="margin-bottom: -4px;" src="images/twitter_share.png" /> <a target="_blank" href="http://twitter.com/home?status=Just found ' + this.name + '. http://victoriacommunity.org/index.php?lid=' + this.lid + '">Tweet about it on Twitter</a></p>';
+	text_share += '<p><img style="margin-bottom: -4px;" src="images/facebook_share.gif" /> <a target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid=' + this.lid + '">Share it on Facebook</a></p>';
+	text_share += '<p><img style="margin-bottom: -4px;" src="images/link_share.jpg" /> <a href="#" onclick="$(\'#link_code\').toggle(\'normal\');$(\'#embed_code\').hide(\'slow\'); return(false);">Email / Link to this Listing</a></p>';	
+	text_share += '<p id="link_code" style="display:none;">Cut and Paste the following code to link to this linsting: <br/>';
+	text_share += '<input type="text" style="width: 280px;" value="http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' + lat_lng.lng() + '&lid=' + this.lid + '" /></p>';		 
+
+	text_share += '<p><img style="margin-bottom: -4px;" src="images/embed_share.jpg" /> <a href="#" onclick="$(\'#embed_code\').toggle(\'normal\');$(\'#link_code\').hide(\'slow\'); return(false);">Embed this Listing / Map into your website</a></p>';	
+	text_share += '<p id="embed_code" style="display:none;">Cut and Paste the following code to embed this linsting: <br/>';
+	text_share += '<input type="text" style="width: 280px;" value="<iframe src=&quot;http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' 
+		+ lat_lng.lng() + '&lid=' + this.lid + '&quot; style=&quot;width: ' + width + 'px; height:' + height + 'px; border:none;&quot;></iframe>" /></p>';		 
+	text_share += '</div>';
+
+
+<div class="info_window" style="height: 130px; overflow:hide;">
+	<p><img style="margin-bottom: -4px;" src="images/twitter_share.png" /> <a target="_blank" href="http://twitter.com/home?status=Just found ' + this.name + '. http://victoriacommunity.org/index.php?lid=' + this.lid + '">Tweet about it on Twitter</a></p>
+	<p><img style="margin-bottom: -4px;" src="images/facebook_share.gif" /> <a target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid=' + this.lid + '">Share it on Facebook</a></p>
+	<p><img style="margin-bottom: -4px;" src="images/link_share.jpg" /> <a href="#" onclick="$(\'#link_code\').toggle(\'normal\');$(\'#embed_code\').hide(\'slow\'); return(false);">Email / Link to this Listing</a></p>	
+	<p id="link_code" style="display:none;">Cut and Paste the following code to link to this linsting: <br/>
+	<input type="text" style="width: 280px;" value="http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' + lat_lng.lng() + '&lid=' + this.lid + '" /></p>		 
+
+	<p><img style="margin-bottom: -4px;" src="images/embed_share.jpg" /> <a href="#" onclick="$(\'#embed_code\').toggle(\'normal\');$(\'#link_code\').hide(\'slow\'); return(false);">Embed this Listing / Map into your website</a></p>	
+	<p id="embed_code" style="display:none;">Cut and Paste the following code to embed this linsting: <br/>
+	<input type="text" style="width: 280px;" value="<iframe src=&quot;http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' 
+		+ lat_lng.lng() + '&lid=' + this.lid + '&quot; style=&quot;width: ' + width + 'px; height:' + height + 'px; border:none;&quot;></iframe>" /></p>		 
+	</div>
+
+				-->
+            	<h5 id="user">
+					Added by
+				</h5>
 			</div>
 		</div>
 	</div>
         <!-- /page listing_detail -->
+
+
+	<div data-role="page" id="comments-page" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head">
+			<h1>Comments</h1>
+		</div>
+		<div data-role="content">
+			<ul class="list" data-role="listview" data-theme="d" data-divider-theme="d">
+			</ul>
+		</div><!-- /content -->
+
+		<ul>
+			<li class='template'>
+				<h3 class="user">User</h3>
+				<p class="message">Message left by user</p>
+				<p class="ui-li-aside"><strong class='date'>The Time</strong></p>
+			</li>
+		</ul>
+
+
+	</div><!-- /page -->
+
+	<div data-role="page" id="inbox-page" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head">
+			<h1>Inbox</h1>
+		</div>
+		<div data-role="content">
+			<ul class="list" data-role="listview" data-theme="d" data-divider-theme="d">
+			</ul>
+		</div><!-- /content -->
+		<ul>
+			<li class='template header'><span class='content'>The Date</span><span class="ui-li-count count">number of messages</span></li>
+			<li class='template row'>
+				<a href="#conversation-page" data-url="" class="url">
+					<h3 class="user">User</h3>
+					<p class="message">Message left by user</p>
+					<p class="ui-li-aside"><strong class='date'>The Time</strong></p>
+				</a>
+			</li>
+		</ul>
+	</div><!-- /page -->
+	<div data-role="page" id="conversation-page" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head">
+			<h1>Conversation</h1>
+		</div>
+		<div data-role="content">
+			<ul class="list" data-role="listview" data-theme="d" data-divider-theme="d">
+			</ul>
+			<ul data-role="listview" data-theme="d" data-divider-theme="d">
+				<li>
+					<label for="conversation-message">Reply:</label>
+					<textarea name="conversation-message" id="conversation-message"></textarea>
+					<input type="button" value="Send">
+				</li>
+			</ul>
+			<ul>
+				<li class='template header' data-role="list-divider"><span class='content'>Conversation Title</span><span class="ui-li-count count">number of messages</span></li>
+				<li class='template row'>
+					<h3 class="user">User</h3>
+					<p class="message">Message left by user</p>
+					<p class="ui-li-aside"><strong class='date'>The Time</strong></p>
+				</li>
+			</ul>
+		</div><!-- /content -->
+	</div><!-- /page -->	
 </body>
 </html>

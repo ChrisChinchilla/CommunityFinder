@@ -1,0 +1,630 @@
+<html> 
+<head> 
+	<title>CommunityFinder.net</title> 
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height, target-densitydpi=device-dpi" />
+	<link rel="stylesheet" type="text/css" href="css/index.css" />
+	
+	<!-- jquery mobile - 1 -->
+	<link rel="stylesheet"  href="css/jqm_themes/default/jquery.mobile-1.2.0.css" />
+	<script src="js/jquery-1.8.3.min.js"></script>
+	<script src="js/jquery.mobile-1.2.0.min.js"></script>
+	<!-- jquery mobile - 0 -->
+
+	<!-- jquery maps - 1 -->
+	<script src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>
+	<script src="js/jquery.ui.map.min.js"></script>
+	<script src="js/jquery.ui.map.extensions.js"></script>
+	<script src="js/jquery.ui.map.services.min.js"></script>
+	<!-- jquery maps - 0 -->
+	
+	<!-- phonegap - 1 -->
+	<script type="text/javascript" src="cordova-2.2.0.js"></script>
+	<script type="text/javascript" src="js/index.js"></script>
+	<script type="text/javascript">
+		app.initialize();
+	</script>
+	<!-- phonegap - 0 -->
+
+<script>
+	/////////////////////////////////////////////
+	// to add
+	/////////////////////////////////////////////
+	//	   	soon
+	//			what details to display in result listing & marker infoWindow when clicked
+	//			need to show what search term is matched (e.g. on default map load search "ab". Borderlands Cooperative shows. But the title doesn't match "ab" search)
+	//			
+	//   		closing infoWindow before refresh markers (currently stays open if refresh search)
+	//
+	//		later
+	//   		dialog box when clicking marker 
+	//		  		http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-geocoding.html
+	//   		pagination of items when clicking a marker: 
+	//		  		http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-extend-with-pagination.html
+	//			micro data page view  
+	//		  		http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-microdata.html
+	/////////////////////////////////////////////
+	// to add
+	/////////////////////////////////////////////
+
+	var DEFAULT_LOCATION = new google.maps.LatLng(-37.820724999999996,145.03867549999998);
+	var DEFAULT_ZOOM = 15;
+	var MAP_ID = "#map_canvas";
+	var drag_timer;
+		
+		// draw map centred on location. retrieve results
+		function mapLocation(location){
+			$(MAP_ID).gmap('option', 'center', location);
+			$(MAP_ID).gmap('option', 'zoom', DEFAULT_ZOOM);
+			loadMarkers(location);
+		}
+		
+		// gecode location and do a search
+		// https://developers.google.com/maps/documentation/geocoding/
+		function findLocationByName(address){
+			var geocoder = new google.maps.Geocoder(); // v3
+			geocoder.geocode( { 'address': address}, function(results, status) { // v3
+				switch (status) {
+					case google.maps.GeocoderStatus.OK:
+						var location = results[0];
+						mapLocation(location.geometry.location);
+						return;
+					case google.maps.GeocoderStatus.ZERO_RESULTS:
+						alert("No results found");
+						return;
+					case google.maps.GeocoderStatus.OVER_QUERY_LIMIT:
+						alert("Too many API calls...");
+						return; 
+					case google.maps.GeocoderStatus.REQUEST_DENIED:
+						alert("Request Denied. sensor not set?");
+						return;
+					case google.maps.GeocoderStatus.INVALID_REQUEST:
+						alert("Invalid request. Missing search location?");
+						return;
+					default:
+						alert("Unknown error");
+						return;
+				}
+			});
+		}
+		
+		function loadingMsg(show){
+			if(show) {
+				$.mobile.loading( 'show', {
+						text: 'Loading...',
+						textVisible: true,
+						theme: 'a',
+						textonly: false,
+						html: null
+				});
+			}
+			else{
+				$.mobile.loading( 'hide' );
+			}
+
+		}
+
+		// does the search based on a location
+		// calls backend API
+		function loadMarkers(location){
+			var map = $(MAP_ID).gmap('get', 'map'); 
+			var Bounds = map.getBounds();
+			var NorthEast = Bounds.getNorthEast();
+			var SouthWest = Bounds.getSouthWest();
+			var north_lat = NorthEast.lat();
+			var east_lng = NorthEast.lng();
+			var south_lat = SouthWest.lat();
+			var west_lng = SouthWest.lng();	
+			
+			var filter_text = $("#txtSearch").val();
+			var filter_subtype = $("#ddlSearch").val();
+			var username = "";
+			var lid = "";
+			//$("#listItems").prepend("Loading items...")
+			loadingMsg(true);
+			/*
+				JSON call
+				/communityfinder/webapp-source/data/get_markers.php?
+					format=json&
+					north_lat=-35.59478566548724&
+					east_lng=149.1119384765625&
+					south_lat=-38.47079371120379&
+					west_lng=142.0806884765625&
+					filter_text=farm&
+					filter_subtype=&
+					username=&
+					listing_id=		
+http://communityfinder.net/data/get_markers.php?format=json&
+north_lat=-37.760724999999996&
+east_lng=144.94392400000004&
+south_lat=-37.820724999999996&
+west_lng=145.03867549999995&
+filter_text=&filter_subtype=&username=&listing_id=
+
+			//*/		
+north_lat=-37.760724999999996;
+east_lng=144.94392400000004;
+south_lat=-37.820724999999996;
+west_lng=145.03867549999995;
+			
+			$.getJSON('http://communityfinder.net/data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid}, function(data) {
+				$("#listItems").empty();
+
+				$(MAP_ID).gmap('clear', 'markers');
+
+				/*
+				http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-data-attribute.html
+				format of LI
+							<li data-gmapping='{"id":"m_1","latlng":{"lat":27.6648274,"lng":-81.51575350000002},"tags":"drupal"}'>
+								<p class="info-box">Florida DrupalCamp - Feb 11 2012</p>
+							</li>
+				*/
+				
+				if(!data.markers || data.markers.length == 0){
+					$("#listItems").append(jQuery("<li>").html("No results found"));
+				}
+				else{
+					for(var i = 0; i < data.markers.length; i++){
+						var m = data.markers[i];
+						var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng} };
+						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '</a>'));
+						// ?id='+m.lid+'
+					}
+				}
+				$("#listItems").listview("refresh");
+				loadingMsg(false);
+
+				loadMarkersFromList();
+			});
+		}
+
+		// load markers based on current centre (used when center is not known. e.g. on dragend)
+		function loadMarkersRefresh(){
+			loadMarkers($(MAP_ID).gmap('option', 'center'));
+		}
+		
+		// reads meta-data in LI node and display on map
+		// http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-data-attribute.html
+		function loadMarkersFromList(){
+			$("[data-gmapping]").each(function(i,el) {
+				var data = $(el).data('gmapping');
+				$(MAP_ID).gmap('addMarker', {
+						'id': data.id, 
+						'tags':data.tags, 
+						'position': new google.maps.LatLng(data.latlng.lat, data.latlng.lng), 
+						'bounds':false  // do not snap map to fit all points
+					}, function(map,marker) {
+					$(el).click(function() {
+						$(marker).triggerEvent('click');
+					});
+				}).click(function() {
+					$(MAP_ID).gmap('openInfoWindow', { 'content': $(el).find('.info-box').parent().html() }, this);
+				});
+			});		
+		}
+
+		// dragging/zooming auto refresh functions - 1
+		function resetTimer(){
+			clearTimeout(drag_timer);
+		}
+		function setTimer(time){
+			resetTimer();
+			drag_timer = setTimeout(function(){ loadMarkers($(MAP_ID).gmap('option', 'center')); }, (time ? time : 1000));
+		}
+		// dragging/zooming auto refresh functions - 0
+		
+		
+		function loadCategories(){
+			var restrict_subtype = '';
+			$.get('http://communityfinder.net/data/get_subtypes.php',{restrict_subtype: restrict_subtype}, function(data) {
+				$("#ddlSearch").html("");
+				$("#ddlSearch").append(jQuery("<option>").attr("value", "").html("-- Any --"));
+				$(data).find('icon').each(function(i) {	
+					var subtype = $(this).attr('subtype');
+					var type = $(this).attr('type');
+					var is_addable = $(this).attr('is_addable');
+					var image = $(this).attr("image");
+					var subtype_name = $(this).attr("subtype_name");
+					var type_name = $(this).attr("type_name");
+					var prefixes = ($(this).attr("prefixes")) ? ($(this).attr("prefixes")).split(',') : null;
+					var prefixes_help = $(this).attr("prefixes_help");
+					$("#ddlSearch").append(jQuery("<option>").attr("value", subtype).html(subtype_name));
+				});
+			});
+		}
+		
+		
+			
+				// Was there an error getting the Location? If so, default to google maps or default location
+		function getLocationError(error){
+			  		alert ('There has been a problem' + error.message);
+
+			$(MAP_ID).gmap('getCurrentPosition', function(position, status) {
+					if ( status === 'OK' ) {
+						e.preventDefault();
+						position = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+					}
+					else
+					{
+						position = DEFAULT_LOCATION;
+					}
+					
+					mapLocation(position);		  
+			});
+		}
+		
+		function getCurrentLocation(position) {
+			try{
+				mapLocation(position); // fails on desktop. for phonegap only?
+			}catch(err){ // for desktop.
+				try{
+				mapLocation(new google.maps.LatLng(position.coords.latitude, position.coords.longitude));
+				}
+				catch(err2){
+					getLocationError();
+				}
+			}
+		}
+
+		function openSearchPage() {
+			$.mobile.changePage( "#search-page", { transition: "slide"} );
+			$(MAP_ID).gmap('refresh', 1);
+		}
+        function openMapPage() {
+            $.mobile.changePage( "#map-page", { transition: "slide"} );
+			$(MAP_ID).gmap('refresh', 1);
+        }
+        //*
+		$(document).on( "pagebeforechange", function( e, data ) {
+			if ( typeof data.toPage === "string" ) {
+					var u = $.mobile.path.parseUrl( data.toPage );
+					console.log("to page: " + data.toPage + "|" );
+					console.log(u.hash);
+					console.log(data);
+					loadingMsg(true);
+					if ( u.hash.search(/^#listing_detail/) !== -1 && false) {
+						//pageSelector = urlObj.hash.replace( /\?.*$/, "" );
+						//$.mobile.changePage( "#listing_detail", { transition: "slide"} );
+						loadMarker(u.hash.replace( /.*id=/, "" ), u, data.options);
+						e.preventDefault();
+					}
+			}
+		});
+//*/
+
+
+
+
+	var categoryData = {
+	animals: {name: "Animals",description: "All your favorites from aardvarks to zebras.",items: [{name: "Pets"},{name: "Farm Animals"},{name: "Wild Animals"}]},
+	colors: {name: "Colors",description: "Fresh colors from the magic rainbow.",items: [{name: "Blue"},{name: "Green"},{name: "Orange"},{name: "Purple"},{name: "Red"},{name: "Yellow"},{name: "Violet"}]},
+	vehicles: {name: "Vehicles",description: "Everything from cars to planes.",items: [{name: "Cars"},{name: "Planes"},{name: "Construction"}]}
+	};
+	$(document).on( "pagebeforechange", function( e, data ) {
+		if ( typeof data.toPage === "string" ) {
+			if ( u.hash.search(/^#category-item/) !== -1 ) {
+				// We're being asked to display the items for a specific category.
+				// Call our internal method that builds the content for the category
+				// on the fly based on our in-memory category data structure.
+				showCategory( u, data.options );
+				// Make sure to tell changePage() we've handled this call so it doesn't
+				// have to do anything.
+				e.preventDefault();
+			}
+
+		}
+	});
+
+	// Load the data for a specific category, based on the URL passed in. Generate markup for the items in the
+	// category, inject it into an embedded page, and then make that page the current active page.
+	function showCategory( urlObj, options )
+	{
+		console.log("start urlObj");
+		console.log(urlObj);
+		console.log("start options");
+		console.log(options);
+		var categoryName = urlObj.hash.replace( /.*category=/, "" ),
+
+			// Get the object that represents the category we
+			// are interested in. Note, that at this point we could
+			// instead fire off an ajax request to fetch the data, but
+			// for the purposes of this sample, it's already in memory.
+			category = categoryData[ categoryName ],
+
+			// The pages we use to display our content are already in the DOM. The id of the page we are going to write our content into is specified in the hash before the '?'.
+			pageSelector = urlObj.hash.replace( /\?.*$/, "" );
+			
+		if ( category ) { // #category-items 
+			var $page = $( pageSelector );
+				$header = $page.children( ":jqmData(role=header)" ),
+				$content = $page.children( ":jqmData(role=content)" ),
+				markup = "<p>" + category.description + "</p><ul data-role='listview' data-inset='true'>",
+				cItems = category.items,
+				numItems = cItems.length;
+			for ( var i = 0; i < numItems; i++ ) { markup += "<li>" + cItems[i].name + "</li>";} markup += "</ul>";
+			$header.find( "h1" ).html( category.name );
+			$content.html( markup );
+
+			// Pages are lazily enhanced. We call page() on the page element to make sure it is always enhanced before we attempt to enhance the listview markup we just injected. Subsequent calls to page() are ignored since a page/widget can only be enhanced once.
+			$page.page();
+
+			$content.find( ":jqmData(role=listview)" ).listview(); // Enhance the listview we just injected.
+
+			// We don't want the data-url of the page we just modified to be the url that shows up in the browser's location field, so set the dataUrl option to the URL for the category we just loaded.
+			//*/
+			console.log("end options b4");
+			console.log(options);
+			options.dataUrl = urlObj.href;
+			console.log("end options after");
+			console.log(options);
+			console.log("end ");
+			console.log(urlObj);
+			// Now call changePage() and tell it to switch to the page we just modified.
+			$.mobile.changePage( $page, options );
+		}
+	}
+
+		function loadMarker(id, u, options){
+			$page = $("#listing_detail");
+			options.dataUrl = u.href;
+			loadingMsg(true);
+			$.getJSON('http://communityfinder.net/data/get_markers.php?format=json&listing_id=' + id, function(data) {
+				
+				$('#name').html(data.markers[0].name);
+				$('#description').html(data.markers[0].desc);
+				$('#user').append(data.markers[0].username);
+				$('#type').html(data.markers[0].type);
+				$('#address').html(data.markers[0].address);
+				$('#phone').html(data.markers[0].phone);
+				$('#phone').attr('href', 'tel:' + data.markers[0].phone);
+				
+				var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
+				if(value) value = value.replace("http://", ""); // value = 9:61
+
+				$('#www').html(value);
+				$('#www').attr('href', 'http://' + value);
+
+				$('#map_canvas_small').gmap('addMarker', { 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
+				$('#map_canvas_small').gmap('option', 'zoom', 14);
+				loadingMsg(false);
+			$.mobile.changePage($page, options);	
+			});
+			
+		}		
+		$(document).ready(function () {
+
+			//*
+			// item details page - 1
+			$("a.listing_link").live('click',function(e) {
+				$.getJSON('http://communityfinder.net/data/get_markers.php?format=json&listing_id=' + $(this).attr("data-parm"), function(data) {
+					
+					console.log(data.markers[0]);
+	
+					
+					$('#name').html(data.markers[0].name);
+					$('#description').html(data.markers[0].desc);
+					$('#user').append(data.markers[0].username);
+					$('#type').html(data.markers[0].type);
+					$('#address').html(data.markers[0].address);
+					$('#phone').html(data.markers[0].phone);
+					$('#phone').attr('href', 'tel:' + data.markers[0].phone);
+					
+					var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
+					if(value) value = value.replace("http://", ""); // value = 9:61
+
+					$('#www').html(value);
+					$('#www').attr('href', 'http://' + value);
+
+					$('#map_canvas_small').gmap('addMarker', { 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
+					$('#map_canvas_small').gmap('option', 'zoom', 14);
+
+				});
+			});
+			// item details page - 0 */
+			
+			///////////////////////////////////////////////////////////////////////////
+			// main map page - 1
+			///////////////////////////////////////////////////////////////////////////
+
+			// search - 1
+			$("#lnkLocation").click(function(e){ $("#divLocation").toggle(); });
+			$("#btnLocation").click(function(e){
+				e.preventDefault();
+				findLocationByName($("#txtLocation").val());
+			});
+			
+			$("#btnMyLocation").click(function(e){
+				var position;
+
+				position = navigator.geolocation.getCurrentPosition(getCurrentLocation, 
+                                         getLocationError, 
+                                         { maximumAge: 3000, timeout: 15000, enableHighAccuracy: true });
+                   
+			});
+			
+			// search - 0
+			
+			// filter - 1
+			loadCategories();
+			$("#lnkSearch").click(function(e){ $("#divSearch").toggle(); });
+			$("#btnSearch").click(function(e){
+				loadMarkers($(MAP_ID).gmap('option', 'center'));
+			});
+			// filter - 0
+
+			
+			// init map - 1
+			$(MAP_ID).gmap({'center': DEFAULT_LOCATION, 'zoom': DEFAULT_ZOOM, 'mapTypeControl': false}).bind('init', function(evt, map) {
+				setTimer(1);
+				// drag map. load search after 1 second after drag ends
+				$(map).dragend(function(){
+					setTimer();
+				}).drag(function(){
+					resetTimer();
+				}).addEventListener('zoom_changed', function(){
+					setTimer();
+				});
+			});
+			// init map - 0
+			///////////////////////////////////////////////////////////////////////////
+			// main map page - 0
+			///////////////////////////////////////////////////////////////////////////
+			openMapPage();
+			openSearchPage();
+		});
+
+
+
+</script>
+</head> 
+<body> 
+	<div data-role="page" id="search-page" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
+			<h1>CommunityFinder</h1>
+<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
+                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
+                        <div data-role="navbar">
+                                <ul>
+                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
+                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
+                                        <li><a href="#" onClick="openLogin();" data-rel="dialog">Login</a></li>
+                                        <li><a href="#" data-icon="gear">Settings</a></li>
+                                        <li><a href="#" data-icon="arrow-r">More</a></li>
+                                </ul>
+                        </div><!-- /navbar -->
+                        </div>
+		</div><!-- /header -->
+
+		<div data-role="content">
+			<a href="#" id="lnkLocation" data-role="button" data-theme="b">Specify location </a>
+			<div id="divLocation" style="display: none">
+				<input id="txtLocation" type="text" value="brunswick west"><input id="btnLocation" type="button" value="Set Location">
+				<input id="btnMyLocation" type="button" value="Near Me" data-role="button" data-theme="a">
+			</div>
+
+			<a href="#" id="lnkSearch" data-role="button" data-theme="b">Filter Results</a>
+			<div id="divSearch" style="display: none">
+				<input id="txtSearch" type="text">
+				<select id="ddlSearch"></select>
+				<input id="btnSearch" type="button" value="Filter">
+			</div>
+
+  	<h2>Select a Category Below:</h2>
+  	<ul data-role="listview" data-inset="true">
+    	<li><a href="#category-items?category=animals">Animals</a></li>
+    	<li><a href="#category-items?category=colors">Colors</a></li>
+    	<li><a href="#category-items?category=vehicles">Vehicles</a></li>
+    </ul>
+			<ul id='listItems' data-role="listview">
+			</ul>
+			<ul>
+				
+		</div><!-- /content -->
+	</div><!-- /page -->
+
+
+<div data-role="page" id="category-items" data-add-back-btn="true">
+<div data-role="header"></div>
+<div data-role="content"></div>
+
+
+</div>
+	<div data-role="dialog" id="login-dialog">
+	
+		<div data-role="header" data-theme="d">
+			<h1>Login</h1>
+
+		</div>
+
+		<div data-role="content" data-theme="c">
+			<input type="text">
+			<input type="password">
+			<input type="button">
+		</div>
+	</div>
+       <div data-role="page" id="map-page" data-add-back-btn="true" style="">
+                <div data-role="header" data-position="fixed" data-id="head" id="headbar">
+                        <h1>CommunityFinder</h1>
+			<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
+                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
+                        <div data-role="navbar">
+                                <ul>
+                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
+                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
+                                        <li><a href="#" data-icon="gear">Settings</a></li>
+                                        <li><a href="#" data-icon="arrow-r">More</a></li>
+                                </ul>
+                        </div><!-- /navbar -->
+                        </div>
+                </div><!-- /header -->
+
+                <div data-role="content">
+                        <div id="map_canvas"></div>
+                </div><!-- /content -->
+        </div><!-- /page -->
+
+
+
+	<div data-role="page" id="listing_detail" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
+                        <h1>CommunityFinder</h1>
+                        <a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
+                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
+                        <div data-role="navbar">
+
+                                <ul>    
+                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
+                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
+                                        <li><a href="#" data-icon="gear">Settings</a></li>
+                                        <li><a href="#" data-icon="arrow-r">More</a></li>
+                                </ul>
+                        </div><!-- /navbar -->
+                        </div>
+                </div><!-- /header -->
+		<div data-role="content">
+		                                                <h1 id="name">CommunityFinder</h1>
+
+			<div class="ui-grid-a">
+				<div class="ui-block-a">
+                				<h3 id="type">
+						Category
+					</h3>
+			
+                     <div id="map_canvas_small"></div>
+				</div>
+				<div class="ui-block-b">
+			<h5 id="address">
+				Street, Suburb, City, Postcode
+			</h5>
+				</div>
+			</div>
+                                   
+
+	
+			<div id="phone">
+				<a href="tel:0400200700" target="_blank" data-transition="fade">
+					Phone
+				</a>
+			</div>
+			<div>
+				<a id="www" href="google.com" target="_blank" data-transition="fade">
+					Web Site
+				</a>
+			</div>
+			<div id="description">
+				Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Donec sed odio dui.
+			</div>
+			<div>
+				<a href="#" target="_blank" data-transition="fade">
+					Share link
+				</a>
+                		<h5 id="user">
+						Added by
+					</h5>
+			</div>
+		</div>
+	</div>
+        <!-- /page listing_detail -->
+</body>
+</html>
