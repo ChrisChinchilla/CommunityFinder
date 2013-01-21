@@ -56,7 +56,7 @@
 	var drag_timer;
 	var config = {};
 	config.prefix = 'http://communityfinder.net/';
-	//config.prefix = '../webapp-source/'; // for local testing
+	config.prefix = '../webapp-source/'; // for local testing
 		
 		// draw map centred on location. retrieve results
 		function mapLocation(location){
@@ -95,14 +95,14 @@
 		}
 		function register(){
 
-			var email = form.email.value;
-			var password = form.password.value;
-			var full_name = form.full_name.value;
-			var username = form.username.value;
+			var email = $("#register-email").val();
+			var password = $("#register-pass").val();
+			var full_name = $("#register-full-name").val();
+			var username = $("#register-user").val();
 		   
 			if(email != '' && password != '' && full_name != '' && username != '') {
-				$.post('data/register.php', {email: email, password: password, full_name: full_name, username: username}, function(data) {
-					$("#register_wait").css("display", "none");
+				$.post(config.prefix + 'data/register.php', {email: email, password: password, full_name: full_name, username: username}, function(data) {
+					//$("#register_wait").css("display", "none");
 					if($(data).find("response_state").attr("success") == 'true') {
 						//if(doOnSuccess) {doOnSuccess();}	
 						popupMsg("Registered");
@@ -318,13 +318,11 @@
 			}
 		}
 		function popupMsg(msg){
-			$.mobile.loading( 'show', {
-					text: msg,
-					textVisible: true,
-					theme: 'a',
-					textonly: true,
-					html: null
-			});
+			// http://jquerymobile.com/demos/1.2.0/docs/pages/popup/index.html
+			// A popup div has to be nested inside the same page as the link.
+			// thus can't have a global popup unless custom
+			$('#popup .content').text(msg);
+			$.mobile.changePage("#popup");
 		}
 		function openSearchPage() {
 			$.mobile.changePage( "#search-page", { transition: "slide"} );
@@ -342,6 +340,7 @@
 		}
 
 		function openCommentsPage(lid){
+			if(!lid) lid = $("#listing_detail").attr("data-parm");
 			loadingMsg(true);
 			$.get(config.prefix+'data/get_marker_comments.php', {lid: lid}, function(data) {	
 				var flag = 0;
@@ -375,7 +374,7 @@
 					//$("#listing_comments_results").html('<p><b>No Comments Added</b><br/><br/>be the first to <a onclick="$(\'#listing_comments\').hide(); $(\'#listing_comments_add\').show(); return(false);" class="" style="" href="#" title="Add Comment">add a comment</a> about ' + that.name + '</p>');
 				}
 				//$("#listing_comments").show();
-				list.listview("refresh");
+				try{list.listview("refresh"); } catch(err){}
 				loadingMsg(false);
 				$.mobile.changePage( "#comments-page", { transition: "slide"} );
 			});				
@@ -425,6 +424,31 @@
 				});
 			}	
 		}
+		function conversationReply(){
+			var conv_id = $("#conversation-page").attr("data-parm");
+			var reply = $("#conversation-message").val();
+			loadingMsg(true);
+			//$("#conversation_reply_button").html('<image id="conversation_reply_wait" src="images/wait_small_white.gif"/>');
+			$.post(config.prefix + 'data/add_conversation_message.php', {conversation_id: conv_id, message: reply}, function(data) {
+				//that.refreshConversation(conv_id);
+				$("#conversation-message").val("");
+				openConversationPage(conv_id);
+				
+			});			
+		}
+		function commentAdd(lid){
+			if(!lid) lid = $("#listing_detail").attr("data-parm");
+			var comment_text = $('#comment').val();
+			loadingMsg(true);
+			$.post(config.prefix + 'data/add_listing_comment.php', {lid:lid, comment_text:comment_text}, function(data){
+				$('#comment').val("");
+				openCommentsPage(lid);	
+			});
+			//$("#listing_comments_add").hide();
+
+		}
+
+
 		$(document).on( "pagebeforechange", function( e, data ) {
 			if ( typeof data.toPage === "string" ) {
 					var u = $.mobile.path.parseUrl( data.toPage );
@@ -470,8 +494,9 @@
 						//$('<div class="listing_div"></div>').html(message_text).appendTo("#inbox_conversation");
 					});
 					//$("#inbox_conversation").append('<div class="listing_div"><div class="listing_left" style="width: 20%;">&nbsp;</div><div class="listing_main"><b>Reply: </b><br><form class="fg-form" action="#" name="replyform"><textarea name="reply" class="fg-input ui-corner-all" style="width:400px; height:100px; margin-bottom: 0.4em;"></textarea><br><button id="conversation_reply_button" type="button" class="fg-button ui-corner-all ui-state-default" onclick="application.user.conversationReply(' + conv_id + ', this.form.reply.value);">Send</button></form></div></div>');
-					list.listview("refresh");
+					try{list.listview("refresh")} catch(err){};
 					loadingMsg(false);
+					$("#conversation-page").attr("data-parm", conv_id);
 					$.mobile.changePage( "#conversation-page", { transition: "slide"} );
 
 				});
@@ -498,21 +523,45 @@
 				openConversationPage($(this).attr("data-url"));
 			});
 			// item details page - 1
+
 			$("a.listing_link").live('click',function(e) {
 				loadingMsg(true);
-				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + $(this).attr("data-parm"), function(data) {
+				var lid = $(this).attr("data-parm");
+				$("#listing_detail").attr("data-parm", lid);
+				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
 					
 					//console.log(data.markers[0]);
-	
+					var name = data.markers[0].name;
 					
-					$('#name').html(data.markers[0].name);
+					$('#name').html(name);
 					$('#description').html(data.markers[0].desc);
-					$('#user').append(data.markers[0].username);
+					$('#user').text(data.markers[0].username);
 					$('#type').html(data.markers[0].type);
 					$('#address').html(data.markers[0].address);
 					$('#phone').html(data.markers[0].phone);
 					$('#phone').attr('href', 'tel:' + data.markers[0].phone);
-					
+
+
+					$('#link_code').hide();
+					$('#embed_code').hide()
+
+					var escaped_name = name.replace("\"", "\\\"");
+					$(".share.href").each(function(i){
+						var val = $(this).attr("href");
+						val = val.replace("{id}", lid);
+						val = val.replace("{name}", escaped_name);
+						$(this).attr("href", val);
+					});
+					$(".share.value").each(function(i){
+						var val = $(this).val();
+						val = val.replace("{id}", lid);
+						val = val.replace("{name}", escaped_name);
+						val = val.replace("{zoom}", 14); // to dynamically change this?
+						val = val.replace("{lat}", data.markers[0].lat);
+						val = val.replace("{lng}", data.markers[0].lng);
+						$(this).val(val);
+					});
+
 					var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
 					if(value) value = value.replace("http://", ""); // value = 9:61
 
@@ -584,13 +633,22 @@
 </script>
 </head> 
 <body> 
-	
+	<div id="popup" data-role="dialog">
+	    <div data-role="header" data-theme="d">
+	        <h1>Info</h1>
+	    </div>
+	    <div data-role="content" data-theme="c">
+	        <div class='content'></div>
+	        <a data-role="button" data-rel="back">Ok</a>
+	    </div>
+	</div>
 	<div data-role="page" id="login-page" data-add-back-btn="true">
 		<div data-role="header">
 			<h1>Login</h1>
 		</div>
 
 		<div data-role="content">
+			<form>
 			<div data-role="fieldcontain">
 				<label for="login-user">Username / Email:</label>
 	    		<input type="text" name="login-user" id="login-user" value=""  />
@@ -600,6 +658,8 @@
 	    		<input type="password" name="login-pass" id="login-pass" value=""  />
 			</div>	
 			<input type="button" value="Login" onClick="login()">
+			</form>
+
 		</div>
 	</div>
 	<div data-role="page" id="register-page" data-add-back-btn="true">
@@ -632,20 +692,20 @@
 	<div data-role="page" id="search-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
 			<h1>CommunityFinder</h1>
-<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
+				<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
                         <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
                         <div data-role="navbar">
                                 <ul>
                                         <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
                                         <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-                                        <li><a href="#login-page" data-rel="dialog">Login</a></li>
+                                        <li><a href="#login-page"    data-rel="dialog">Login</a></li>
                                         <li><a href="#register-page" data-rel="dialog">Register</a></li>
                                         <li><a href="#" onClick="openInboxPage()">Inbox</a></li>
                                         <li><a href="#" data-icon="gear">Settings</a></li>
                                         <li><a href="#" data-icon="arrow-r">More</a></li>
                                 </ul>
                         </div><!-- /navbar -->
-                        </div>
+                    </div>
 		</div><!-- /header -->
 
 		<div data-role="content">
@@ -739,19 +799,35 @@
 				Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Donec sed odio dui.
 			</div>
 			<div>
-				<a href="#" target="_blank" data-transition="fade">
-					Share link
-				</a>
+        	<h5>
+				Added by <span id="user"></span>
+			</h5>
+			<a href="#comments-page" onclick="openCommentsPage()">Comments</a>
+			<h4>Share link</h4>
+			<ul>
+				<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://victoriacommunity.org/index.php?lid={id}">Tweet about it on Twitter</a>
+				</li>
+				<li>
+				<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid={id}">Share it on Facebook</a>
+				</li>
+				<li><img src="images/link_share.jpg" /> <a href="#" onclick="$('#link_code').toggle('normal');$('#embed_code').hide('slow'); return(false);">Email / Link to this Listing</a></p>	
+					<p id="link_code" style="display:none;">Cut and Paste the following code to link to this listing: <br/>
+				<input type="text" class="share value" value="http://www.victoriamycommunity.org/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
+				</li>	
+			</ul>
+
 				<!-- 
 					<a target="_blank" href="http://twitter.com/home?status=Just found St Johns Op Shop - Brunswick West. http://victoriacommunity.org/index.php?lid=7519">Tweet about it on Twitter</a>
-					<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://google.com" data-text="test">Tweet</a>
-<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>	
+						<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://google.com" data-text="test">Tweet</a>
+	<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>	
 
 
-				
+
 New Sharing
 	Twitter: https://twitter.com/about/resources/buttons#tweet
-
+	Facebook: requires app API key...
+		http://developers.facebook.com/docs/reference/plugins/send/
+		http://developers.facebook.com/docs/reference/plugins/like/
 old code
 	var text_share = '<div class="info_window" style="height: 130px; overflow:hide;">'; 
 	text_share += '<p><img style="margin-bottom: -4px;" src="images/twitter_share.png" /> <a target="_blank" href="http://twitter.com/home?status=Just found ' + this.name + '. http://victoriacommunity.org/index.php?lid=' + this.lid + '">Tweet about it on Twitter</a></p>';
@@ -781,9 +857,6 @@ old code
 	</div>
 
 				-->
-            	<h5 id="user">
-					Added by
-				</h5>
 			</div>
 		</div>
 	</div>
@@ -796,6 +869,15 @@ old code
 		</div>
 		<div data-role="content">
 			<ul class="list" data-role="listview" data-theme="d" data-divider-theme="d">
+			</ul>
+			<ul data-role="listview" data-theme="d" data-divider-theme="d">
+				<li>
+					<form>
+						<label for="comment">Comment:</label>
+						<textarea name="comment" id="comment"></textarea>
+						<input id="comment_add" type="button" value="Send" onclick="commentAdd()">
+					</form>
+				</li>
 			</ul>
 		</div><!-- /content -->
 
@@ -838,9 +920,11 @@ old code
 			</ul>
 			<ul data-role="listview" data-theme="d" data-divider-theme="d">
 				<li>
-					<label for="conversation-message">Reply:</label>
-					<textarea name="conversation-message" id="conversation-message"></textarea>
-					<input type="button" value="Send">
+					<form>
+						<label for="conversation-message">Reply:</label>
+						<textarea name="conversation-message" id="conversation-message"></textarea>
+						<input id="conversation_reply_button" type="button" value="Send" onclick="conversationReply()">
+					</form>
 				</li>
 			</ul>
 			<ul>
