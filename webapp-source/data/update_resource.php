@@ -76,7 +76,7 @@ if(1 || $_SESSION['user']['user_id']) {
 				// ADD INVITE USER
 				// create rego code to validate email address							
 				$rego_code = md5(uniqid(rand(), true));		
-				$query_add_user = "INSERT INTO `lukasber_theveggiebox`.`user` 
+				$query_add_user = "INSERT INTO `user` 
 								(`user_id` , `full_name` , `username` , `email` , 	`password` , `state` , `rego_code`, `added_on` )
 								VALUES ( NULL , ' ', ' ', '$invite_email ', ' ', 'invited', '$rego_code', NOW() );";			
 				$invited_user_id = (mysql_query($query_add_user, $link)) ? mysql_insert_id() : null;

@@ -26,7 +26,7 @@ $success = mysql_select_db($SITE['DB_NAME'], $link);
 			
 			$record = mysql_fetch_assoc($resource);
 			
-			$query = " UPDATE `lukasber_agc`.`user` SET `state` = 'active', `rego_code` = '' WHERE `user`.`user_id` = " . $record['user_id'] . " LIMIT 1 ; ";
+			$query = " UPDATE `user` SET `state` = 'active', `rego_code` = '' WHERE `user`.`user_id` = " . $record['user_id'] . " LIMIT 1 ; ";
 			
 			$success = mysql_query($query, $link);
 			
