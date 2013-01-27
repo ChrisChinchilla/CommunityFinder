@@ -11,7 +11,7 @@ $prefix = ($_GET['prefix']) ? $_GET['prefix'] : null;
 $prefix = preg_replace('/\+/', ' ', $prefix);
 
 	
-		$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], 'lukasber_theveggiebox');
+		$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
 		if (!mysqli_connect_errno()) {
 			if($prefix != null) {			
 				$query =  " SELECT tag, prefix FROM tag 

@@ -140,7 +140,9 @@
 						//that.email = $(data).find("user").attr("email");
 						//that.full_name = $(data).find("user").attr("full_name");
 						//that.username = $(data).find("user").attr("username");
-						
+						config.email = $(data).find("user").attr("email");
+						config.full_name = $(data).find("user").attr("full_name");
+						config.username = $(data).find("user").attr("username");
 						//if(doOnSuccess) {doOnSuccess(that.username);}
 						popupMsg("Logged in");
 						openSearchPage();
@@ -215,6 +217,28 @@
 			});
 		}
 
+		function loadMyMarkers(){
+			loadingMsg(true);
+			//alert(config.user);
+			//alert(config.username);
+			$.getJSON(config.prefix + 'data/get_markers.php', {format:"json", username: config.username}, function(data) {
+				$("#listItems").empty();
+				$(MAP_ID).gmap('clear', 'markers');
+				if(!data.markers || data.markers.length == 0){
+					$("#listItems").append(jQuery("<li>").html("No results found"));
+				}
+				else{
+					for(var i = 0; i < data.markers.length; i++){
+						var m = data.markers[i];
+						var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng} };
+						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '</a>'));
+					}
+				}
+				$("#listItems").listview("refresh");
+				loadingMsg(false);
+			});
+		}
+		
 		// load markers based on current centre (used when center is not known. e.g. on dragend)
 		function loadMarkersRefresh(){
 			loadMarkers($(MAP_ID).gmap('option', 'center'));
@@ -380,6 +404,148 @@
 			});				
 			
 		}
+		function deleteMarker(lid){
+			if(!lid) lid = $("#listing_detail").attr("data-parm");
+			$.post(config.prefix+'data/delete_resource.php', {lid:lid}, function(data) {
+				if($(data).find("response_state").attr("success") == 'true') {
+					popupMsg("Deleted");
+					loadMyMarkers();
+				}
+				else
+					popupMsg("Error deleting");
+			});
+		}
+		function openDetailsPage(lid){
+			$("#listing_detail").attr("data-parm", lid);
+			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
+				
+				console.log(data.markers[0]);
+				var name = data.markers[0].name;
+				if(!name) name = '';
+				$('#name').html(name);
+				$('#description').html(data.markers[0].desc);
+				$('#user').text(data.markers[0].username);
+				$('#type').html(data.markers[0].type);
+				$('#address').html(data.markers[0].address);
+				$('#phone').html(data.markers[0].phone);
+				$('#phone').attr('href', 'tel:' + data.markers[0].phone);
+
+
+				$('#link_code').hide();
+				$('#embed_code').hide()
+
+				var escaped_name = name.replace("\"", "\\\"");
+				$(".share.href").each(function(i){
+					var val = $(this).attr("href");
+					val = val.replace("{id}", lid);
+					val = val.replace("{name}", escaped_name);
+					$(this).attr("href", val);
+				});
+				$(".share.value").each(function(i){
+					var val = $(this).val();
+					val = val.replace("{id}", lid);
+					val = val.replace("{name}", escaped_name);
+					val = val.replace("{zoom}", 14); // to dynamically change this?
+					val = val.replace("{lat}", data.markers[0].lat);
+					val = val.replace("{lng}", data.markers[0].lng);
+					$(this).val(val);
+				});
+
+				var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
+				if(value) value = value.replace("http://", ""); // value = 9:61
+
+				$('#www').html(value);
+				$('#www').attr('href', 'http://' + value);
+
+				$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
+				$('#map_canvas_small').gmap('option', 'zoom', 14);
+				
+				$.mobile.changePage("#listing_detail");
+				loadingMsg(false);
+			});
+		}
+		
+		function openEditPage(lid){
+			if(!lid) lid = $("#listing_detail").attr("data-parm");
+				loadingMsg(true);
+				$("#edit_detail").attr("data-parm", lid);
+				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
+					
+					//console.log(data.markers[0]);
+/*
+ac_email: ""
+ac_on: 0
+ac_text: ""
+ac_url: ""
+address: ""
+desc: "Independent network for holistic community activism, sustainability and action research. "
+lat: -37.824199676514
+lid: 185
+lng: 145.04200744629
+name: "Borderlands Cooperative"
+phone: "123"
+rss: ""
+subtype: "community space"
+subtype_name: "Community Group / Space"
+tags: ""
+type: "community"
+username: "user"
+wiki: ""
+www: "http://www.borderlands.org.au"
+
+ac_text: ""
+
+lat: -37.824199676514
+lid: 185
+lng: 145.04200744629
+
+subtype: "community space"
+subtype_name: "Community Group / Space"
+type: "community"
+username: "user"
+
+
+
+*/					
+					$("#edit-lat").val(data.markers[0].lat);
+					$("#edit-lng").val(data.markers[0].lng);
+					$("#edit-subtype").val(data.markers[0].subtype);
+					$("#edit-type").val(data.markers[0].type);
+					
+					var name = data.markers[0].name;
+					
+					$('#edit-category').text(data.markers[0].subtype + "("+ data.markers[0].type +")");
+					$('#edit-category').text(data.markers[0].subtype_name);
+					
+					
+					$('#edit-name').val(name);
+					$('#edit-description').val(data.markers[0].desc);
+					$('#edit-phone').val(data.markers[0].phone);
+					$('#edit-address').val(data.markers[0].address);
+
+					var tags = data.markers[0].tags;
+					var delim = "type of group:";
+					$('#edit-tags_general').val(tags.substr(0,tags.indexOf(delim)));
+					$("#edit-tags_type_of_group").val(tags.substr(tags.indexOf(delim)).replace(new RegExp(delim, "g"), ""));
+					$("#edit-wiki").val(data.markers[0].wiki);
+					$("#edit-www").val(data.markers[0].www);
+					$("#edit-rss").val(data.markers[0].rss);
+					$('.invite_details').hide();
+					if(data.markers[0].ac_on == 1) {
+						$('.invite_details').show();
+						$("#edit-is_invite").attr("checked", "checked");
+					}
+					else{
+						$('.invite_details').hide();
+						$("#edit-is_invite").removeAttr("checked");
+					}
+					$("#edit-invite_email").val(data.markers[0].ac_email);
+					$("#edit-invite_url").val(data.markers[0].ac_url);
+					loadingMsg(false);
+					$.mobile.changePage( "#edit_detail", { transition: "slide"} );
+				});
+			
+		}
 		function openInboxPage(){
 			loadingMsg(true);
 
@@ -452,9 +618,9 @@
 		$(document).on( "pagebeforechange", function( e, data ) {
 			if ( typeof data.toPage === "string" ) {
 					var u = $.mobile.path.parseUrl( data.toPage );
-					console.log("to page: " + data.toPage + "|" );
-					console.log(u.hash);
-					console.log(data);
+					//console.log("to page: " + data.toPage + "|" );
+					//console.log(u.hash);
+					//console.log(data);
 					if ( u.hash.search(/^#conversation-page/) !== -1 && false) {
 						//pageSelector = urlObj.hash.replace( /\?.*$/, "" );
 						
@@ -502,6 +668,8 @@
 				});
 			}
 		}
+		
+		// ask server to verify if user is logged in
 		function isLoggedIn(){
 			$.post(config.prefix+'data/is_logged_in.php', {}, function(data) {
 				if($(data).find("response_state").attr("success") == 'true') {
@@ -518,6 +686,73 @@
 
 		}
 		
+		
+		// does the actual data transfer to server in order to edit a listing
+		function editListing(lid){
+			loadingMsg(true);
+/*
+
+lid:185
+title:Borderlands Cooperative
+desc:Independent network for holistic community activism, sustainability and action research. 
+type:community
+subtype:community space
+lat:-37.824199676514
+lng:145.04200744629
+www:http://www.borderlands.org.au
+wiki:
+rss:
+is_invite:0
+invite_email:
+invite_url:
+address:1
+phone:123
+tags:,organic,transport,general,type of group:sustainability,type of group:type
+*/				
+			var data = {};
+			data.lid = lid;
+			var alltags = '';
+			var tags = $("#edit-tags_general").val().split(",");
+			for(var i in tags) {
+				alltags += ',' + tags[i];
+			}
+			tags = $("#edit-tags_type_of_group").val().split(",");
+			for(var i in tags) {
+				alltags += ',' + "type of group".replace(/_/g, ' ') + ':' + tags[i];
+			}
+			
+			
+			$.post(config.prefix + 'data/update_resource.php', 
+				{
+					lid: data.lid,
+					title: $("#edit-name").val(),
+					desc: $("#edit-description").val(),
+					type:$("#edit-type").val(),
+					subtype:$("#edit-subtype").val(),
+					lat:$("#edit-lat").val(),
+					lng:$("#edit-lng").val(),
+					www:$("#edit-www").val(),
+					wiki:$("#edit-wiki").val(),
+					rss:$("#edit-rss").val(),
+					is_invite:$("#edit-is_invite").val() == "on" ? 1 : 0,
+					invite_email:$("#edit-invite_email").val(),
+					invite_url:$("#edit-invite_url").val(),
+					address:$("#edit-address").val(),
+					phone:$("#edit-phone").val(),
+					tags:alltags
+				}, 
+				function(data) {
+					if($(data).find("response_state").attr("success") == 'true') {
+						//popupMsg("Saved");
+						openDetailsPage(lid);
+					}
+					else {
+						if(doOnFailure) {doOnFailure('Failed to save');}
+					}
+				}
+			);
+		}
+		
 		$(document).ready(function () {
 			$("#inbox-page ul.list a").live('click', function(e){
 				openConversationPage($(this).attr("data-url"));
@@ -527,54 +762,18 @@
 			$("a.listing_link").live('click',function(e) {
 				loadingMsg(true);
 				var lid = $(this).attr("data-parm");
-				$("#listing_detail").attr("data-parm", lid);
-				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
-					
-					//console.log(data.markers[0]);
-					var name = data.markers[0].name;
-					
-					$('#name').html(name);
-					$('#description').html(data.markers[0].desc);
-					$('#user').text(data.markers[0].username);
-					$('#type').html(data.markers[0].type);
-					$('#address').html(data.markers[0].address);
-					$('#phone').html(data.markers[0].phone);
-					$('#phone').attr('href', 'tel:' + data.markers[0].phone);
-
-
-					$('#link_code').hide();
-					$('#embed_code').hide()
-
-					var escaped_name = name.replace("\"", "\\\"");
-					$(".share.href").each(function(i){
-						var val = $(this).attr("href");
-						val = val.replace("{id}", lid);
-						val = val.replace("{name}", escaped_name);
-						$(this).attr("href", val);
-					});
-					$(".share.value").each(function(i){
-						var val = $(this).val();
-						val = val.replace("{id}", lid);
-						val = val.replace("{name}", escaped_name);
-						val = val.replace("{zoom}", 14); // to dynamically change this?
-						val = val.replace("{lat}", data.markers[0].lat);
-						val = val.replace("{lng}", data.markers[0].lng);
-						$(this).val(val);
-					});
-
-					var value = data.markers[0].www; // value = 9.61 use $("#text").text() if you are not on select box...
-					if(value) value = value.replace("http://", ""); // value = 9:61
-
-					$('#www').html(value);
-					$('#www').attr('href', 'http://' + value);
-
-					$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
-					$('#map_canvas_small').gmap('option', 'zoom', 14);
-					loadingMsg(false);
-
-				});
+				openDetailsPage(lid);
 			});
 			// item details page - 0
+			
+
+			// edit - 1
+			$("#btnEdit").click(function(e){
+				e.preventDefault();				
+				var lid = $("#listing_detail").attr("data-parm");
+				editListing(lid);
+			});
+			// edit - 0
 			
 			///////////////////////////////////////////////////////////////////////////
 			// main map page - 1
@@ -633,61 +832,6 @@
 </script>
 </head> 
 <body> 
-	<div id="popup" data-role="dialog">
-	    <div data-role="header" data-theme="d">
-	        <h1>Info</h1>
-	    </div>
-	    <div data-role="content" data-theme="c">
-	        <div class='content'></div>
-	        <a data-role="button" data-rel="back">Ok</a>
-	    </div>
-	</div>
-	<div data-role="page" id="login-page" data-add-back-btn="true">
-		<div data-role="header">
-			<h1>Login</h1>
-		</div>
-
-		<div data-role="content">
-			<form>
-			<div data-role="fieldcontain">
-				<label for="login-user">Username / Email:</label>
-	    		<input type="text" name="login-user" id="login-user" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="login-pass">Password:</label>
-	    		<input type="password" name="login-pass" id="login-pass" value=""  />
-			</div>	
-			<input type="button" value="Login" onClick="login()">
-			</form>
-
-		</div>
-	</div>
-	<div data-role="page" id="register-page" data-add-back-btn="true">
-		<div data-role="header">
-			<h1>Register</h1>
-		</div>
-		<div data-role="content">
-			<form>
-			<div data-role="fieldcontain">
-				<label for="register-email">Email:</label>
-	    		<input type="text" name="register-email" id="register-email" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-pass">Password:</label>
-	    		<input type="password" name="register-pass" id="register-pass" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-full-name">Full name:</label>
-	    		<input type="text" name="register-full-name" id="register-full-name" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-user">Username:</label>
-	    		<input type="text" name="register-user" id="register-user" value=""  />
-			</div>	
-			<input type="button" value="Register" onClick="register()">
-			</form>
-		</div>
-	</div>
 
 	<div data-role="page" id="search-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
@@ -701,6 +845,7 @@
                                         <li><a href="#login-page"    data-rel="dialog">Login</a></li>
                                         <li><a href="#register-page" data-rel="dialog">Register</a></li>
                                         <li><a href="#" onClick="openInboxPage()">Inbox</a></li>
+                                        <li><a href="#" onClick="loadMyMarkers()">Your Listings</a></li>
                                         <li><a href="#" data-icon="gear">Settings</a></li>
                                         <li><a href="#" data-icon="arrow-r">More</a></li>
                                 </ul>
@@ -753,6 +898,124 @@
 
 
 
+	<div data-role="page" id="edit_detail" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
+			<h1>CommunityFinder</h1>
+			<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
+			<div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
+			<div data-role="navbar">
+
+				<ul>    
+					<li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
+					<li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
+					<li><a href="#" data-icon="gear">Settings</a></li>
+					<li><a href="#" data-icon="arrow-r">More</a></li>
+				</ul>
+			</div><!-- /navbar -->
+			</div>
+		</div><!-- /header -->
+		<div data-role="content">
+<!-- 
+	<table>
+	<tbody>
+	<tr><td><b>Category: </b></td><td><b id='edit-category'></b></td></tr>
+	<tr><td><b>Title</b></td><td> <input id='edit-name' name="name" value="Borderlands Cooperative" style="width: 220px;" class="fg-input ui-corner-all"><span title="" style="float: right;" class="tag_link ui-icon ui-icon-info "></span></td></tr>
+	<tr><td><b>Description: </b></td><td> <textarea id='edit-description' name="description" cols="35" rows="2" class="fg-input ui-corner-all" style="width: 220px;">Independent network for holistic community activism, sustainability and action research. </textarea><span title="" class="tag_link ui-icon ui-icon-info " style="float: right;"></span></td></tr>
+	<tr><td><b>Phone: </b></td><td> <input id='edit-phone' name="phone" value="" style="width: 220px;" class="fg-input ui-corner-all"></td></tr>
+	<tr><td><b>Address: </b></td><td> <input id='edit-address' name="address" value="" style="width: 220px;" class="fg-input ui-corner-all"></td></tr>
+	<tr><td colspan="2"><hr></td></tr>
+	<tr><td colspan="2"><b>Tags</b><span title="" class="tag_link ui-icon ui-icon-info " style="float: right;"></span></td></tr>
+	<tr><td><b>general:</b></td><td> <input name="tags_general" id="edit-tags_general" value="" class="fg-input ui-corner-all ui-autocomplete-input" style="width: 220px;" autocomplete="off"></td></tr>
+	<tr><td><b>type of group:</b></td><td> <input name="tags_type_of_group" id="edit-tags_type_of_group" value="" class="fg-input ui-corner-all ui-autocomplete-input" style="width: 220px;" autocomplete="off"></td></tr>
+	<tr><td></td><td style="color: grey;">ie. environment, social justice etc</td></tr>
+	<tr><td colspan="2"><hr></td></tr>
+	<tr><td><b>Wikipedia Page:</b></td><td> <input id="edit-wiki" name="wiki" value="" class="fg-input ui-corner-all ui-autocomplete-input" style="width: 220px;" autocomplete="off"><span title="Links listing to associated Wikipedia page, just start typing and we'll suggest exisiting pages on wikipedia" class="tag_link ui-icon ui-icon-info " style="float: right;"></span></td></tr>
+	<tr><td colspan="2"><hr></td></tr>
+	<tr><td><b>WWW (ie http://..):</b></td><td> <input id="edit-www" name="www" value="http://www.borderlands.org.au" class="fg-input ui-corner-all" style="width: 220px;"><span title="Links listing to an associated Web Site" class="tag_link ui-icon ui-icon-info " style="float: right;"></span></td></tr>
+	<tr><td><b>RSS: (ie http://..)</b></td><td> <input id="edit-rss" name="rss" value="" class="fg-input ui-corner-all" style="width: 220px;"></td></tr>
+	<tr><td colspan="2"><hr></td></tr>
+	<tr><td colspan="2">
+	
+	<input onclick="$('.invite_details').toggle();" type="checkbox" id="edit-is_invite" name="is_invite" class="fg-input ui-corner-all"> <b>Customise 'contact us' link</b></td></tr>
+	<tr class="invite_details" style="display: none;"><td colspan="2">Instead of using the built in inbox system, provide either an email address, or 'contact us' form url to customise the 'contact user' link on this listing.</td></tr>
+	<tr class="invite_details" style="display: none;"><td><b>Email:</b></td><td> 
+	<input id="edit-invite_email" name="invite_email" value="" size="35" class="fg-input ui-corner-all"> or </td></tr>
+	<tr class="invite_details" style="display: none;"><td><b>Contact URL:</b></td><td> </td></tr>
+	<tr><td colspan="2"><hr></td></tr></tbody>
+				</table>        
+-->
+				<form>
+					Category: <b id='edit-category'></b>
+
+					<input id='edit-lat' type="hidden" >
+					<input id='edit-lng' type="hidden" >
+					<div>
+						<span title="" style="float: right;" class="tag_link ui-icon ui-icon-info "></span>
+						<label for="name">Title: </label>
+						<input id='edit-name' name="name" value="" class="fg-input ui-corner-all">
+					</div>
+					<div>
+						<span title="" class="tag_link ui-icon ui-icon-info " style="float: right;"></span>
+						<label for="description">Description: </label>
+						<textarea id='edit-description' name="description" cols="35" rows="2" class="fg-input ui-corner-all" ></textarea>
+					</div>
+					<div>
+						<label for="phone">Phone: </label>
+						<input id='edit-phone' name="phone" value="" class="fg-input ui-corner-all">
+					</div>
+					<div>
+						<label for="address">Address: </label>
+						<input id='edit-address' name="address" value="" class="fg-input ui-corner-all">
+					</div>
+					<div>
+						<label for="tags_general">Tags (general): </label>
+						<input name="tags_general" id="edit-tags_general" value="" class="fg-input ui-corner-all ui-autocomplete-input"  autocomplete="off">
+					</div>
+					<div>
+						<label for="tags_type_of_group">Tags (type of group): </label>
+						<input name="tags_type_of_group" id="edit-tags_type_of_group" value="" class="fg-input ui-corner-all ui-autocomplete-input"  autocomplete="off">
+						ie. environment, social justice etc
+					</div>
+					<div>
+						<span title="Links listing to associated Wikipedia page, just start typing and we'll suggest exisiting pages on wikipedia" class="tag_link ui-icon ui-icon-info " style="float: right;"></span>
+						<label for="wiki">Wikipedia Page:</label>
+						<input id="edit-wiki" name="wiki" value="" class="fg-input ui-corner-all ui-autocomplete-input"  autocomplete="off">
+					</div>
+					<div>
+						<span title="Links listing to an associated Web Site" class="tag_link ui-icon ui-icon-info " style="float: right;"></span>
+						<label for="www">WWW (ie http://..): </label>
+						<input id="edit-www" name="www" value="" class="fg-input ui-corner-all" >
+					</div>
+					<div>
+						<label for="rss">RSS: (ie http://..) </label>
+						<input id="edit-rss" name="rss" value="" class="fg-input ui-corner-all" >
+					</div>
+					
+					<div data-role="fieldcontain">
+						<input onclick="$('.invite_details').toggle();" type="checkbox" id="edit-is_invite" name="is_invite" class="fg-input ui-corner-all">
+						<label for="is_invite">Customise 'contact us' link</label>
+					</div>
+					<div class="invite_details" style="display: none;">
+						Instead of using the built in inbox system, provide either an email address, or 'contact us' form url to customise the 'contact user' link on this listing.
+					</div>	
+					<div class="invite_details" style="display: none;">
+						<label for="invite_email">Email:</label>
+						<input id="edit-invite_email" name="invite_email" value="" class="fg-input ui-corner-all"> or 
+					</div>	
+					<div class="invite_details" style="display: none;">
+						<label for="invite_url">Contact URL:</label>
+						<input id="edit-invite_url" name="invite_url" value="" class="fg-input ui-corner-all">
+					</div>	
+
+					<input type="button" value="Save" id="btnEdit">
+				</form>
+				
+			<div>
+			</div>
+		</div>
+	</div>
+	<!-- /page edit_details-->
+        
 	<div data-role="page" id="listing_detail" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
                         <h1>CommunityFinder</h1>
@@ -803,6 +1066,8 @@
 				Added by <span id="user"></span>
 			</h5>
 			<a href="#comments-page" onclick="openCommentsPage()">Comments</a>
+			<a href="#edit-page" onclick="openEditPage()">Edit</a>
+			<a href="#delete-page" onclick="deleteMarker(); return false;">Delete</a>
 			<h4>Share link</h4>
 			<ul>
 				<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://victoriacommunity.org/index.php?lid={id}">Tweet about it on Twitter</a>
@@ -937,5 +1202,62 @@ old code
 			</ul>
 		</div><!-- /content -->
 	</div><!-- /page -->	
+	
+	<div id="popup" data-role="dialog">
+	    <div data-role="header" data-theme="d">
+	        <h1>Info</h1>
+	    </div>
+	    <div data-role="content" data-theme="c">
+	        <div class='content'></div>
+	        <a data-role="button" data-rel="back">Ok</a>
+	    </div>
+	</div>
+	<div data-role="page" id="login-page" data-add-back-btn="true">
+		<div data-role="header">
+			<h1>Login</h1>
+		</div>
+
+		<div data-role="content">
+			<form>
+			<div data-role="fieldcontain">
+				<label for="login-user">Username / Email:</label>
+	    		<input type="text" name="login-user" id="login-user" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="login-pass">Password:</label>
+	    		<input type="password" name="login-pass" id="login-pass" value=""  />
+			</div>	
+			<input type="button" value="Login" onClick="login()">
+			</form>
+
+		</div>
+	</div>
+	<div data-role="page" id="register-page" data-add-back-btn="true">
+		<div data-role="header">
+			<h1>Register</h1>
+		</div>
+		<div data-role="content">
+			<form>
+			<div data-role="fieldcontain">
+				<label for="register-email">Email:</label>
+	    		<input type="text" name="register-email" id="register-email" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-pass">Password:</label>
+	    		<input type="password" name="register-pass" id="register-pass" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-full-name">Full name:</label>
+	    		<input type="text" name="register-full-name" id="register-full-name" value=""  />
+			</div>	
+			<div data-role="fieldcontain">
+				<label for="register-user">Username:</label>
+	    		<input type="text" name="register-user" id="register-user" value=""  />
+			</div>	
+			<input type="button" value="Register" onClick="register()">
+			</form>
+		</div>
+	</div>
+	
 </body>
 </html>

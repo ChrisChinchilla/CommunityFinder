@@ -46,7 +46,7 @@ $success = mysql_select_db($SITE['DB_NAME'], $link);
 	else if(mysql_num_rows($result_confirm_rego) == 1) {
 			$record = mysql_fetch_assoc($result_confirm_rego);
 			
-			$query_upd = " UPDATE `lukasber_theveggiebox`.`user` SET `state` = 'active', `rego_code` = '',  
+			$query_upd = " UPDATE `user` SET `state` = 'active', `rego_code` = '',  
 										`full_name` = '$full_name', `username` = '$username', `password` = '$password'    
 									    WHERE `user`.`user_id` = " . $record['user_id'] . " LIMIT 1 ; ";
 			$success = mysql_query($query_upd, $link);
