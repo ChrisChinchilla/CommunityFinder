@@ -50,13 +50,13 @@
 	// to add
 	/////////////////////////////////////////////
 
-	var DEFAULT_LOCATION = new google.maps.LatLng(-37.820724999999996,145.03867549999998);
+	var DEFAULT_LOCATION = new google.maps.LatLng(-37.816667, 144.966667);
 	var DEFAULT_ZOOM = 15;
 	var MAP_ID = "#map_canvas";
 	var drag_timer;
 	var config = {};
 	config.prefix = 'http://communityfinder.net/';
-	config.prefix = '../webapp-source/'; // for local testing
+	//config.prefix = '../webapp-source/'; // for local testing
 		
 		// draw map centred on location. retrieve results
 		function mapLocation(location){
@@ -416,6 +416,7 @@
 			});
 		}
 		function openDetailsPage(lid){
+
 			$("#listing_detail").attr("data-parm", lid);
 			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
 				
@@ -456,12 +457,22 @@
 
 				$('#www').html(value);
 				$('#www').attr('href', 'http://' + value);
-
+				
+				$('#map_canvas_small').gmap('clear', 'markers');
 				$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
 				$('#map_canvas_small').gmap('option', 'zoom', 14);
-				
+				//$('#map_canvas_small').gmap('option', 'center', data.markers[0].lat + ',' + data.markers[0].lng);
+				/*
+				$('#map_canvas_small').gmap({ 'center': new google.maps.LatLng(data.markers[0].lat,data.markers[0].lng), 'callback': function() {
+        			$('#map_canvas_small').gmap('addMarker', { 'position': new google.maps.LatLng(data.markers[0].lat,data.markers[0].lng) } );
+				}});
+				*/
+				$('#map_canvas_small').gmap('refresh', 1);
+
 				$.mobile.changePage("#listing_detail");
+
 				loadingMsg(false);
+				
 			});
 		}
 		
@@ -1035,19 +1046,15 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		<div data-role="content">
 			<h1 id="name">CommunityFinder</h1>
 			<div class="ui-grid-a">
-				<div class="ui-block-a">
                 	<h3 id="type">
 						Category
 					</h3>
 			
                      <div id="map_canvas_small"></div>
-				</div>
-				<div class="ui-block-b">
-					<h5 id="address">
-						Street, Suburb, City, Postcode
-					</h5>
-				</div>
 			</div>
+								<div id="address">
+						Street, Suburb, City, Postcode
+					</div>
 			<div id="phone">
 				<a href="tel:0400200700" target="_blank" data-transition="fade">
 					Phone
@@ -1070,14 +1077,14 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			<a href="#delete-page" onclick="deleteMarker(); return false;">Delete</a>
 			<h4>Share link</h4>
 			<ul>
-				<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://victoriacommunity.org/index.php?lid={id}">Tweet about it on Twitter</a>
+				<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://communityfinder.net/index.php?lid={id}">Tweet about it on Twitter</a>
 				</li>
 				<li>
-				<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid={id}">Share it on Facebook</a>
+				<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://communityfinder.net/index.php?lid={id}">Share it on Facebook</a>
 				</li>
 				<li><img src="images/link_share.jpg" /> <a href="#" onclick="$('#link_code').toggle('normal');$('#embed_code').hide('slow'); return(false);">Email / Link to this Listing</a></p>	
 					<p id="link_code" style="display:none;">Cut and Paste the following code to link to this listing: <br/>
-				<input type="text" class="share value" value="http://www.victoriamycommunity.org/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
+				<input type="text" class="share value" value="http://communityfinder.net/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
 				</li>	
 			</ul>
 
