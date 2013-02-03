@@ -44,6 +44,7 @@ if($_SESSION['user']['user_id']) {
 			header('Content-Type: text/xml');
 			print('<response>');
 			print('<response_state success="false" />');
+			print('<error message="Not logged in" />');
 			print('</response>');				
 	}
 	$mysqli->close();

@@ -21,7 +21,7 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 		if (!mysqli_connect_errno()) {
 				$types = '';
 				$bindings = '';
-				$query =  " SELECT DISTINCT marker.lat, marker.lng, marker.title, marker.description, marker.marker_id, user.username, type.type_cd, subtype.subtype_cd, subtype.subtype_name, marker.www, marker.wiki, marker.rss, marker.datetime_on, marker.start_datetime, marker.end_datetime, marker.alt_contact_on, marker.alt_contact_email, marker.alt_contact_url, marker.alt_contact_text, marker.address, marker.phone
+				$query =  " SELECT DISTINCT marker.lat, marker.lng, marker.title, marker.description, marker.marker_id, user.username, type.type_cd, subtype.subtype_cd, subtype.subtype_name, marker.www, marker.wiki, marker.rss, marker.datetime_on, marker.start_datetime, marker.end_datetime, marker.alt_contact_on, marker.alt_contact_email, marker.alt_contact_url, marker.alt_contact_text, marker.address, marker.phone, marker_to_user.user_id
 							FROM marker
 							INNER JOIN marker_to_user ON marker.marker_id = marker_to_user.marker_id
 							INNER JOIN user ON marker_to_user.user_id = user.user_id
@@ -127,13 +127,10 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 						$stmt->execute();		
 						$stmt->store_result();
 						$stmt->bind_result($lat, $lng, $title, $description, $marker_id, $username, $type_cd, $subtype_cd, $subtype_name, $www, $wiki, $rss, 
-							$datetime_on, $start_datetime, $end_datetime, $alt_contact_on, $alt_contact_email, $alt_contact_url, $alt_contact_text, $address, $phone);
-					
+							$datetime_on, $start_datetime, $end_datetime, $alt_contact_on, $alt_contact_email, $alt_contact_url, $alt_contact_text, $address, $phone, $user_id);
 				}	
 				//print ($mysqli->error);
-				
-				
-				
+
 				// ////////////////////////////////
 				// print start of file block				
 				if ($format == 'xml') {	
@@ -148,7 +145,7 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 				}
 				else if ($format == 'csv') {
 						header("Content-Type: text/plain");	
-						print('"name","description","lat","lng","added by","category","phone","address","www","rss","tags"' . "\n");
+						print('"name","description","lat","lng","added by","category","phone","address","www","rss","tags", "user_id", "edit", "delete"' . "\n");
 				}
 				else if ($format == 'kml') {
 						header('Content-Type: text/xml');
@@ -175,7 +172,21 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 				// ////////////////////////////////
 				// print middle of file block, ie one for each listing
 				while ($stmt->fetch()) {
-				
+					$user_id = (int) $user_id;
+					if($user_id == 0) $user_id = ANONYMOUS_USER;
+					$theUser = (int) @$_SESSION['user']['user_id'];
+
+					$edit = false;
+					$delete = false;
+					 // Delete listing	Admin / Owner / (logged in users can delete anonymous)
+					 // Edit Lisitng	Admin / Owner / Anyone for anon
+					if($user_id == ANONYMOUS_USER) $edit = true;
+					if($user_id == ANONYMOUS_USER && $theUser != 0) $delete = true;
+					if($theUser == $user_id) {
+						$edit = true;
+						$delete = true;
+					}
+
 					// do the subquery to get tags...
 					$query = 'SELECT tag, prefix FROM tag, marker_to_tag 
 										  WHERE tag.tag_id = marker_to_tag.tag_id 
@@ -198,21 +209,21 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 
 									
 					if ($format == 'xml') {	
-							printf('<marker lat="%f" lng="%f" name="%s" description="%s" lid="%d" username="%s" type="%s" subtype="%s" subtype_name="%s" www="%s" wiki="%s" rss="%s" datetime_on="%d" start_datetime="%s" end_datetime="%s" is_invite="%d" invite_email="%s" invite_url="%s" invite_text="%s" address="%s" phone="%s" tags="%s" />', 
+							printf('<marker lat="%f" lng="%f" name="%s" description="%s" lid="%d" username="%s" type="%s" subtype="%s" subtype_name="%s" www="%s" wiki="%s" rss="%s" datetime_on="%d" start_datetime="%s" end_datetime="%s" is_invite="%d" invite_email="%s" invite_url="%s" invite_text="%s" address="%s" phone="%s" tags="%s" user_id="%s" edit="%s" delete="%s" />', 
 											$lat, $lng, stripslashes($title), stripslashes($description), $marker_id, $username, 
 											$type_cd, $subtype_cd, $subtype_name, $www, $wiki, $rss, $datetime_on, $start_datetime, $end_datetime, $alt_contact_on, 
-											$alt_contact_email, $alt_contact_url, $alt_contact_text, $address, $phone, $tags);
+											$alt_contact_email, $alt_contact_url, $alt_contact_text, $address, $phone, $tags, $user_id, $edit, $delete);
 							print("\n");
 					}
 					else if ($format == 'json') {
 						$markers["markers"][] = array("lat" => $lat, "lng" => $lng, "name" => stripslashes($title), "desc" => stripslashes($description), "lid" => $marker_id, "username" => $username, 
 											"type" => $type_cd, "subtype" => $subtype_cd, "subtype_name" => $subtype_name, "www" => $www, "wiki" => $wiki, "rss" => $rss, 
-											"ac_on" => $alt_contact_on, "ac_email" => $alt_contact_email, "ac_url" => $alt_contact_url, "ac_text" => $alt_contact_text, "address" => $address, "phone" => $phone, "tags" => $tags);
+											"ac_on" => $alt_contact_on, "ac_email" => $alt_contact_email, "ac_url" => $alt_contact_url, "ac_text" => $alt_contact_text, "address" => $address, "phone" => $phone, "tags" => $tags, "user_id" => $user_id, "edit" => $edit, "delete" => $delete);
 					}
 					else if ($format == 'csv') {
-							printf('"%s","%s","%f","%f","%s","%s","%s","%s","%s","%s","%s"', 
+							printf('"%s","%s","%f","%f","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s"', 
 								stripslashes($title), stripslashes($description), $lat, $lng, 
-								$username, $subtype_name, $phone, $address, $www, $rss, $tags);
+								$username, $subtype_name, $phone, $address, $www, $rss, $tags, $user_id, $edit, $delete);
 							print("\n");
 					}	
 					else if ($format == 'kml') {

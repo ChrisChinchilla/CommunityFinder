@@ -34,19 +34,39 @@ if($datetime_on) {
 }
 
 
-//TODO if marker owned check user is logged in, if marker anon, allow any edit...
+$success = false;
+$listing_id = ($_GET['listing_id']) ? $_GET['listing_id'] : '';
+$marker_owner_id = ANONYMOUS_USER;
+$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
 
-if(1 || $_SESSION['user']['user_id']) {
-	
-	$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
-	
+// get marker details to check owner is the user or anonymous 
+if (!mysqli_connect_errno()) {
+	$query = "SELECT DISTINCT marker_to_user.user_id
+				FROM marker
+				INNER JOIN marker_to_user ON marker.marker_id = marker_to_user.marker_id 
+				WHERE marker_to_user.state =  'owner'
+				AND marker.deleted =0 
+				AND marker.marker_id = ?
+				";
+	if ($stmt = $mysqli->prepare($query)) {
+		$stmt->bind_param("s", $listing_id);
+		$stmt->execute();
+		$stmt->bind_result($marker_owner_id);
+		$stmt->fetch();
+		$stmt->close();
+	}
+	else
+	{
+		$errMsg = "Cannot connect to DB to get user detail";
+	}
+}
+$marker_owner_id = (int) $marker_owner_id; $marker_owner_id = ANONYMOUS_USER;
+
+if($_SESSION['user']['user_id'] && ($marker_owner_id == $_SESSION['user']['user_id'] || $marker_owner_id == ANONYMOUS_USER)) {
 	// update (add + remove) tags to reflect updated tags string  
 	updateTags($marker_id, $tags, $mysqli);
-	
-	$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
-	
 	// check connection
-	if (!mysqli_connect_errno()) {				
+	if (!mysqli_connect_errno()) {
 		// prepare statement
 
 		if($stmt = $mysqli->prepare("	UPDATE marker SET title = ?, description = ?, lat = ?, lng = ?, www = ?, wiki= ?, rss = ?, 
@@ -143,18 +163,36 @@ if(1 || $_SESSION['user']['user_id']) {
 			}
 			// NORMAL RESPONSE
 			else {
-				header('Content-Type: text/xml');
-				print('<response>');
-				print('<response_state success="true" />');
-				print('<resource lid="' . $lid . '" />');
-				print('</response>');
+				$success = true;
 			}
 			$stmt->close(); // close statement
 		}
-										print($mysqli->error);
-
-		$mysqli->close(); // close connection
+		else{
+			$errMsg = "Could not update DB";
+		}
+	}
+	else
+	{
+		$errMsg = "Could not connect to DB";
 	}
 }
+else{
+	$errMsg = "Not logged in / No access";
+}
+$mysqli->close(); // close connection
+
+
+header('Content-Type: text/xml');
+print('<response>' . "\n");
+if($success){
+	print('<response_state success="true" />' . "\n");
+	print('<resource lid="' . $lid . '" />' . "\n");
+}	
+else {
+	print('  <response_state success="false" />' . "\n");
+	print('  <error message="' . $errMsg . '" />' . "\n");
+}
+print('</response>');
+
 
 ?>

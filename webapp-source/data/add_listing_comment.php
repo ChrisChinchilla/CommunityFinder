@@ -32,6 +32,7 @@ else {$user_id = 133;} // 133 is anonymous user...
 		header('Content-Type: text/xml');
 		print('<response>');
 		print('<response_state success="false" />');
+		print('<error message="Could not save comment" />');
 		print('</response>');		
 	}
 	$mysqli->close();

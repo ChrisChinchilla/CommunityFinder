@@ -68,6 +68,7 @@ include('./bootstrap.php');
 		
 		print('<response>' . "\n");
 		print('  <response_state success="false" />' . "\n");
+		print('  <error message="Not logged in" />' . "\n");
 		print('</response>' . "\n");
 			
 	}

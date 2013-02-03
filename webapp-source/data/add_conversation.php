@@ -68,6 +68,7 @@ if($_SESSION['user']['user_id']) {
 		header('Content-Type: text/xml');	
 		print('<response>' . "\n");
 		print('  <response_state success="false" />' . "\n");
+		print('  <error message="Not logged in" />' . "\n");
 		print('</response>' . "\n");
 	}
 

@@ -6,7 +6,10 @@ if($_SESSION['user']) {
 		
 	print('<response>' . "\n");
 	print('<response_state success="true" />' . "\n");
-	print('<user username ="' . $_SESSION['user']['username'] . '" email="' . $_SESSION['user']['email'] . '" full_name="' . $_SESSION['user']['full_name'] . '" />' . "\n");
+	print('<user username ="' . $_SESSION['user']['username'] . '" 
+		email="' . $_SESSION['user']['email'] . '" 
+		user_id="' . $_SESSION['user']['user_id'] . '" 
+		full_name="' . $_SESSION['user']['full_name'] . '" />' . "\n");
 	print('</response>' . "\n");		
 }
 else {

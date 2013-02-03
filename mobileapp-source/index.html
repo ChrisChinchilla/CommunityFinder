@@ -52,12 +52,23 @@
 
 	var DEFAULT_LOCATION = new google.maps.LatLng(-37.816667, 144.966667);
 	var DEFAULT_ZOOM = 15;
+	var ANONYMOUS_USER = 133;
 	var MAP_ID = "#map_canvas";
 	var drag_timer;
 	var config = {};
-	config.prefix = 'http://communityfinder.net/';
-	//config.prefix = '../webapp-source/'; // for local testing
+		config.debug = true; // to print console logs
+		config.prefix = 'http://communityfinder.net/'; // for phonegap
+		//config.prefix = '../webapp-source/'; // for local testing when. comment out for deployment to phonegap
 		
+		userDataReset();
+
+		function userDataReset(){
+			config.email = "";
+			config.full_name = "";
+			config.username = "";
+			config.user_id = 0;
+		}
+
 		// draw map centred on location. retrieve results
 		function mapLocation(location){
 			$(MAP_ID).gmap('option', 'center', location);
@@ -129,6 +140,22 @@
 		function doOnSuccess(str){
 			popupMsg(str);
 		}
+
+		function logout(){
+			$.post(config.prefix + 'data/logout.php', function(data) {
+				//$("#register_wait").css("display", "none");
+				if($(data).find("response_state").attr("success") == 'true') {
+					userDataReset();
+					//if(doOnSuccess) {doOnSuccess(that.username);}
+					popupMsg("Logged out");
+					openSearchPage();
+					
+				}
+				else {
+					if(doOnFailure) {doOnFailure('Could not log out');}
+				}
+			});
+		}
 		function login(){
 			var email_or_username = $("#login-user").val();
 			var password = $("#login-pass").val();
@@ -143,12 +170,13 @@
 						config.email = $(data).find("user").attr("email");
 						config.full_name = $(data).find("user").attr("full_name");
 						config.username = $(data).find("user").attr("username");
+						config.user_id = $(data).find("user").attr("user_id");
 						//if(doOnSuccess) {doOnSuccess(that.username);}
 						popupMsg("Logged in");
 						openSearchPage();
 					}
 					else {
-						if(doOnFailure) {doOnFailure('Incorext username or password, please try again.');}
+						if(doOnFailure) {doOnFailure('Incorrect username or password, please try again.');}
 					}
 				});
 			}
@@ -174,6 +202,9 @@
 			var lid = "";
 			//$("#listItems").prepend("Loading items...")
 			loadingMsg(true);
+
+			// to fix 
+			// http://www.communityfinder.net/index.php?theme=undefined&zoom=14&lat=-37.790658897800206&lng=144.99361038208008&subtype=all
 
 			/*
 				JSON call
@@ -270,7 +301,10 @@
 		}
 		function setTimer(time){
 			resetTimer();
-			drag_timer = setTimeout(function(){ loadMarkers($(MAP_ID).gmap('option', 'center')); }, (time ? time : 1000));
+			drag_timer = setTimeout(function(){ 
+				if(!config.add_marker)
+					loadMarkers($(MAP_ID).gmap('option', 'center')); 
+			}, (time ? time : 1000));
 		}
 		// dragging/zooming auto refresh functions - 0
 		
@@ -352,9 +386,16 @@
 			$.mobile.changePage( "#search-page", { transition: "slide"} );
 			$(MAP_ID).gmap('refresh', 1);
 		}
-		function openMapPage() {
+		function openAddPage(){
+			openMapPage(true);
+		}
+		function openMapPage(add) {
+			if(add){
+				config.add_marker = true; // blocks refresh
+				$(MAP_ID).gmap('clear', 'markers');
+			}
 			$.mobile.changePage( "#map-page", { transition: "slide"} );
-			$(MAP_ID).gmap('refresh', 1);
+			
 		}
 		function openLoginPage() {
 			$.mobile.changePage( "#login-page", { transition: "slide"} );
@@ -409,19 +450,29 @@
 			$.post(config.prefix+'data/delete_resource.php', {lid:lid}, function(data) {
 				if($(data).find("response_state").attr("success") == 'true') {
 					popupMsg("Deleted");
-					loadMyMarkers();
+					config.delete_refresh = true;
+					window.history.go(-3);
 				}
 				else
-					popupMsg("Error deleting");
+					popupMsg("Error deleting: " + $(data).find("error").attr("message"));
 			});
 		}
 		function openDetailsPage(lid){
 
 			$("#listing_detail").attr("data-parm", lid);
 			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
-				
-				console.log(data.markers[0]);
+				$("#lnkEdit").hide();
+				$("#lnkDelete").hide();
+
+
+				if(config.debug) {
+					console.log(data.markers[0]);
+					console.log("user: " + data.markers[0].user_id);
+					console.log("me: " + config.user_id);
+				}
 				var name = data.markers[0].name;
+				if(data.markers[0].edit == 1) $("#lnkEdit").show();
+				if(data.markers[0].delete == 1) $("#lnkDelete").show();
 				if(!name) name = '';
 				$('#name').html(name);
 				$('#description').html(data.markers[0].desc);
@@ -459,15 +510,12 @@
 				$('#www').attr('href', 'http://' + value);
 				
 				$('#map_canvas_small').gmap('clear', 'markers');
-				$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 'position': data.markers[0].lat + ',' + data.markers[0].lng, 'bounds': true});
+				$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 
+						'position': data.markers[0].lat + ',' + data.markers[0].lng, 
+						'bounds': true});
 				$('#map_canvas_small').gmap('option', 'zoom', 14);
-				//$('#map_canvas_small').gmap('option', 'center', data.markers[0].lat + ',' + data.markers[0].lng);
-				/*
-				$('#map_canvas_small').gmap({ 'center': new google.maps.LatLng(data.markers[0].lat,data.markers[0].lng), 'callback': function() {
-        			$('#map_canvas_small').gmap('addMarker', { 'position': new google.maps.LatLng(data.markers[0].lat,data.markers[0].lng) } );
-				}});
-				*/
-				$('#map_canvas_small').gmap('refresh', 1);
+				$("#map_canvas_small").gmap('option', 'center', new google.maps.LatLng( data.markers[0].lat, data.markers[0].lng))
+				
 
 				$.mobile.changePage("#listing_detail");
 
@@ -478,9 +526,9 @@
 		
 		function openEditPage(lid){
 			if(!lid) lid = $("#listing_detail").attr("data-parm");
-				loadingMsg(true);
-				$("#edit_detail").attr("data-parm", lid);
-				$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
+			$("#edit_detail").attr("data-parm", lid);
+			loadingMsg(true);
+			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
 					
 					//console.log(data.markers[0]);
 /*
@@ -632,6 +680,10 @@ username: "user"
 					//console.log("to page: " + data.toPage + "|" );
 					//console.log(u.hash);
 					//console.log(data);
+					if(u.hash == "#logout-page"){
+						logout();
+						e.preventDefault();	
+					}
 					if ( u.hash.search(/^#conversation-page/) !== -1 && false) {
 						//pageSelector = urlObj.hash.replace( /\?.*$/, "" );
 						
@@ -639,6 +691,12 @@ username: "user"
 						//e.preventDefault();
 					}
 			}
+		});
+		$(document).on('pageshow', "#listing_detail", function () {
+			$('#map_canvas_small').gmap('refresh');
+		});		
+		$(document).on('pageshow', "#map-page", function () {
+			$(MAP_ID).gmap('refresh',1);
 		});		
 		function openConversationPage(conv_id){
 			loadingMsg(true);
@@ -697,7 +755,30 @@ username: "user"
 
 		}
 		
-		
+
+		function addListing(data){
+			$.post(config.prefix + 'data/add_resource.php', 
+				{
+					title: '',
+					desc: '',
+					type: '',
+					subtype: data.subtype,
+					lat: data.lat,
+					lng: data.lng,
+				}, 
+				function(data) {
+					// <response><response_state success="true" /><marker lid="8549" /></response>
+					if($(data).find("response_state").attr("success") == 'true') {
+						config.add_marker = false;
+						openEditPage($(data).find("marker").attr("lid"));
+					}
+					else {
+						var msg = $(data).find("error").attr("message"); if(!msg) msg = '';
+						if(doOnFailure) {doOnFailure('Failed to save: ' + msg);}
+					}
+				}
+			);			
+		}
 		// does the actual data transfer to server in order to edit a listing
 		function editListing(lid){
 			loadingMsg(true);
@@ -731,8 +812,6 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			for(var i in tags) {
 				alltags += ',' + "type of group".replace(/_/g, ' ') + ':' + tags[i];
 			}
-			
-			
 			$.post(config.prefix + 'data/update_resource.php', 
 				{
 					lid: data.lid,
@@ -758,7 +837,8 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 						openDetailsPage(lid);
 					}
 					else {
-						if(doOnFailure) {doOnFailure('Failed to save');}
+						var msg = $(data).find("error").attr("message"); if(!msg) msg = '';
+						if(doOnFailure) {doOnFailure('Failed to save: ' + msg);}
 					}
 				}
 			);
@@ -781,7 +861,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			// edit - 1
 			$("#btnEdit").click(function(e){
 				e.preventDefault();				
-				var lid = $("#listing_detail").attr("data-parm");
+				var lid = $("#edit_detail").attr("data-parm");
 				editListing(lid);
 			});
 			// edit - 0
@@ -818,8 +898,17 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 
 			
 			// init map - 1
+			// http://code.google.com/p/jquery-ui-map/
 			$(MAP_ID).gmap({'center': DEFAULT_LOCATION, 'zoom': DEFAULT_ZOOM, 'mapTypeControl': false}).bind('init', function(evt, map) {
 				setTimer(1);
+
+				$(map).click(function(e){
+					if(config.debug) console.log(e);
+					if(config.add_marker){
+
+						addListing({lat: e.latLng.lat(), lng: e.latLng.lng(), subtype: 'art and culture - ot'});
+					}
+				});
 				// drag map. load search after 1 second after drag ends
 				$(map).dragend(function(){
 					setTimer();
@@ -853,8 +942,10 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
                                 <ul>
                                         <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
                                         <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-                                        <li><a href="#login-page"    data-rel="dialog">Login</a></li>
+                                        <li><a id="lnkLogin" href="#login-page" data-rel="dialog">Login</a></li>
                                         <li><a href="#register-page" data-rel="dialog">Register</a></li>
+                                        <li><a href="#logout-page">Logout</a></li>
+                                        <li><a href="#add-page" onClick="openAddPage()">Add</a></li>
                                         <li><a href="#" onClick="openInboxPage()">Inbox</a></li>
                                         <li><a href="#" onClick="loadMyMarkers()">Your Listings</a></li>
                                         <li><a href="#" data-icon="gear">Settings</a></li>
@@ -976,7 +1067,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					</div>
 					<div>
 						<label for="address">Address: </label>
-						<input id='edit-address' name="address" value="" class="fg-input ui-corner-all">
+						<textarea id='edit-edit-address' name="address" cols="35" rows="2" class="fg-input ui-corner-all" ></textarea>
 					</div>
 					<div>
 						<label for="tags_general">Tags (general): </label>
@@ -1022,6 +1113,20 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				</form>
 				
 			<div>
+			</div>
+		</div>
+	</div>
+
+	<div data-role="dialog" id="delete-page">
+		<div data-role="header">
+			<h1>Delete Marker</h1>
+		</div>
+
+		<div data-role="content">
+			<h3>Delete Marker?</h3>
+			<div data-inline="true">
+			    <a href="#" data-role="button" data-rel="back">Cancel</a>
+			    <a href="#" data-role="button" data-theme="b" onclick="deleteMarker(); return false;">Delete</a>
 			</div>
 		</div>
 	</div>
@@ -1072,21 +1177,31 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
         	<h5>
 				Added by <span id="user"></span>
 			</h5>
-			<a href="#comments-page" onclick="openCommentsPage()">Comments</a>
-			<a href="#edit-page" onclick="openEditPage()">Edit</a>
-			<a href="#delete-page" onclick="deleteMarker(); return false;">Delete</a>
-			<h4>Share link</h4>
-			<ul>
-				<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://communityfinder.net/index.php?lid={id}">Tweet about it on Twitter</a>
-				</li>
-				<li>
-				<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://communityfinder.net/index.php?lid={id}">Share it on Facebook</a>
-				</li>
-				<li><img src="images/link_share.jpg" /> <a href="#" onclick="$('#link_code').toggle('normal');$('#embed_code').hide('slow'); return(false);">Email / Link to this Listing</a></p>	
-					<p id="link_code" style="display:none;">Cut and Paste the following code to link to this listing: <br/>
-				<input type="text" class="share value" value="http://communityfinder.net/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
-				</li>	
-			</ul>
+			
+			
+			
+			
+
+			<a href="#comments-page" onclick="openCommentsPage()" data-role="button" data-icon="arrow-r" data-iconpos="right">Comments</a>
+			<a id="lnkEdit" href="#edit-page" onclick="openEditPage()" data-role="button" data-rel="dialog">Edit</a>
+			<a id="lnkDelete" href="#delete-page" data-role="button" data-rel="dialog">Delete</a>
+			
+
+			<div data-role="collapsible" data-mini="true">
+				<h4>Share link</h4>
+				<ul>
+					<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://communityfinder.net/index.php?lid={id}">Tweet about it on Twitter</a>
+					</li>
+					<li>
+					<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://communityfinder.net/index.php?lid={id}">Share it on Facebook</a>
+					</li>
+					<li><img src="images/link_share.jpg" /> <a href="#" onclick="$('#link_code').toggle('normal');$('#embed_code').hide('slow'); return(false);">Email / Link to this Listing</a></p>	
+						<p id="link_code" style="display:none;">Cut and Paste the following code to link to this listing: <br/>
+					<input type="text" class="share value" value="http://communityfinder.net/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
+					</li>	
+				</ul>
+			</div>
+
 
 				<!-- 
 					<a target="_blank" href="http://twitter.com/home?status=Just found St Johns Op Shop - Brunswick West. http://victoriacommunity.org/index.php?lid=7519">Tweet about it on Twitter</a>
