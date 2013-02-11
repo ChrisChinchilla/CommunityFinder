@@ -44,6 +44,19 @@ body {
     width:100%;
 }
 
+#main-toolbar {
+  background: red;
+  position: fixed;
+  top: 10px;
+  left: 0px;
+  right: 0px;
+  height: 100px;
+  z-index: 1000;
+}
+#main-stage {
+
+}
+
 /* Portrait layout (default) */
 .app {
     background:url(../img/logo.png) no-repeat center top; /* 170px x 200px */
@@ -154,8 +167,14 @@ h5#address
 		a.listing_link {
 			color: #0000ff;
 		}
-	#map-page, .ui-content, #map_canvas { height: 100%; padding: 0; }
-	#map_canvas { height: 100%; min-height: 100%; }
+
+//#map-page, .ui-content, #map_canvas { 
+//    height: 200px; padding: 0; 
+//}
+
+#map_canvas { 
+    height: 100%;
+}
 
 #map_canvas_small
 {

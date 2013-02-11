@@ -390,12 +390,16 @@
 			openMapPage(true);
 		}
 		function openMapPage(add) {
-			if(add){
+            if(add){
 				config.add_marker = true; // blocks refresh
 				$(MAP_ID).gmap('clear', 'markers');
 			}
 			$.mobile.changePage( "#map-page", { transition: "slide"} );
-			
+            // resize map page and cavas to get around JQM page height due to fixed header page height calculations
+            $('#map_canvas').height($(window).height() - 71);
+            $('#map-page').height($(window).height() - 71).css('min-height', $(window).height() - 71 + 'px');
+            // refresh map to ensure that it fits to correct canvas size
+            $(MAP_ID).gmap('refresh', 1);
 		}
 		function openLoginPage() {
 			$.mobile.changePage( "#login-page", { transition: "slide"} );
@@ -993,8 +997,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
                         </div>
                 </div><!-- /header -->
 
-                <div data-role="content">
-                        <div id="map_canvas"></div>
+                <div data-role="content" id="map_canvas">
                 </div><!-- /content -->
         </div><!-- /page -->
 
