@@ -41,4 +41,5 @@ else{
 	$SITE['DB_NAME'] = 'communityfinder';
 	error_reporting(E_ERROR | E_WARNING | E_PARSE);
 }
+define('ANONYMOUS_USER', 133);
 ?>

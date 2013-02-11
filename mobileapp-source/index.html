@@ -50,10 +50,14 @@
 	// to add
 	/////////////////////////////////////////////
 
-	var DEFAULT_LOCATION = new google.maps.LatLng(-37.816667, 144.966667);
+	//var DEFAULT_LOCATION = new google.maps.LatLng(-37.816667, 144.966667);
+	var DEFAULT_LOCATION = new google.maps.LatLng(-37.790658897800206, 144.99361038208008); // http://www.yarracity.vic.gov.au/about-yarra/ | http://www.communityfinder.net/index.php?theme=undefined&zoom=14&lat=-37.790658897800206&lng=144.99361038208008&subtype=all
+
 	var DEFAULT_ZOOM = 15;
 	var ANONYMOUS_USER = 133;
 	var MAP_ID = "#map_canvas";
+
+	var MAP_SMALL_ID = "#map_canvas_small";
 	var drag_timer;
 	var config = {};
 		config.debug = true; // to print console logs
@@ -202,7 +206,12 @@
 			var lid = "";
 			//$("#listItems").prepend("Loading items...")
 			loadingMsg(true);
-
+			if(north_lat == south_lat || east_lng == west_lng){
+				north_lat += 0.05;
+				south_lat -= 0.05;
+				east_lng += 0.05;
+				west_lng -= 0.05;
+			}
 			// to fix 
 			// http://www.communityfinder.net/index.php?theme=undefined&zoom=14&lat=-37.790658897800206&lng=144.99361038208008&subtype=all
 
@@ -220,7 +229,7 @@
 					listing_id=		
 			//*/		
 			
-			$.getJSON(config.prefix + 'data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid}, function(data) {
+			$.getJSON(config.prefix + 'data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid /*, limit: 20 //*/ }, function(data) {
 				$("#listItems").empty();
 				$(MAP_ID).gmap('clear', 'markers');
 
@@ -267,6 +276,8 @@
 				}
 				$("#listItems").listview("refresh");
 				loadingMsg(false);
+				$.mobile.changePage( "#search-page", { transition: "slide"} );
+
 			});
 		}
 		
@@ -278,6 +289,7 @@
 		// reads meta-data in LI node and display on map
 		// http://jquery-ui-map.googlecode.com/svn/trunk/demos/jquery-google-maps-data-attribute.html
 		function loadMarkersFromList(){
+			$("#item_summary .details").hide();
 			$("[data-gmapping]").each(function(i,el) {
 				var data = $(el).data('gmapping');
 				$(MAP_ID).gmap('addMarker', {
@@ -286,11 +298,19 @@
 						'position': new google.maps.LatLng(data.latlng.lat, data.latlng.lng), 
 						'bounds':false  // do not snap map to fit all points
 					}, function(map,marker) {
-					$(el).click(function() {
-						$(marker).triggerEvent('click');
-					});
+						$(el).click(function() {
+							$(marker).triggerEvent('click');
+						});
 				}).click(function() {
-					$(MAP_ID).gmap('openInfoWindow', { 'content': $(el).find('.info-box').parent().html() }, this);
+					if(config.marker && config.marker != this)
+						config.marker.setAnimation(null);
+					config.marker = this;
+					this.setAnimation(google.maps.Animation.BOUNCE);
+					var data = $(el).find('.info-box');
+					$("#item_summary .details").attr("data-parm", data.attr("data-parm")).show();
+					$("#item_summary .details .ui-btn-text").text(data.text());
+
+					//$(MAP_ID).gmap('openInfoWindow', { 'content': $(el).find('.info-box').parent().html() }, this);
 				});
 			});		
 		}
@@ -392,28 +412,41 @@
 		function openMapPage(add) {
             if(add){
 				config.add_marker = true; // blocks refresh
-				$(MAP_ID).gmap('clear', 'markers');
+			}
+			else{
+				config.add_marker = false;
+				loadMarkers($(MAP_ID).gmap('option', 'center'));
 			}
 			$.mobile.changePage( "#map-page", { transition: "slide"} );
             // resize map page and cavas to get around JQM page height due to fixed header page height calculations
             $('#map_canvas').height($(window).height() - 71);
             $('#map-page').height($(window).height() - 71).css('min-height', $(window).height() - 71 + 'px');
             // refresh map to ensure that it fits to correct canvas size
-            $(MAP_ID).gmap('refresh', 1);
+			$(MAP_ID).gmap('refresh', 1);
 		}
-		function openLoginPage() {
-			$.mobile.changePage( "#login-page", { transition: "slide"} );
+		// http://stackoverflow.com/questions/4535888/jquery-text-and-newlines
+		function htmlForTextWithEmbeddedNewlines(text) {
+		    var htmls = [];
+		    var lines = text.split(/\n/);
+		    // The temporary <div/> is to perform HTML entity encoding reliably.
+		    //
+		    // document.createElement() is *much* faster than jQuery('<div/>')
+		    // http://stackoverflow.com/questions/268490/
+		    //
+		    // You don't need jQuery but then you need to struggle with browser
+		    // differences in innerText/textContent yourself
+		    var tmpDiv = jQuery(document.createElement('div'));
+		    for (var i = 0 ; i < lines.length ; i++) {
+		        htmls.push(tmpDiv.text(lines[i]).html());
+		    }
+		    return htmls.join("<br>");
 		}
-		function openRegisterPage() {
-			$.mobile.changePage( "#register-page", { transition: "slide"} );
-		}
-
 		function openCommentsPage(lid){
 			if(!lid) lid = $("#listing_detail").attr("data-parm");
 			loadingMsg(true);
 			$.get(config.prefix+'data/get_marker_comments.php', {lid: lid}, function(data) {	
 				var flag = 0;
-
+				$("#name-comments").text($("#name").text());
 				var list = $("#comments-page .list").eq(0);
 				var template = $("#comments-page").find(".template");
 				list.empty();
@@ -426,7 +459,7 @@
 					
 					var row = template.clone();
 					row.removeClass("template");
-					row.find(".message").text(comment_text);
+					row.find(".message").html(htmlForTextWithEmbeddedNewlines(comment_text));
 					row.find(".user").text(username);
 					row.find(".date").text(timestamp);
 					list.append(row);
@@ -462,11 +495,10 @@
 			});
 		}
 		function openDetailsPage(lid){
+			if(!lid) lid = $("#item_summary .details").attr("data-parm");
 
 			$("#listing_detail").attr("data-parm", lid);
 			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
-				$("#lnkEdit").hide();
-				$("#lnkDelete").hide();
 
 
 				if(config.debug) {
@@ -475,8 +507,14 @@
 					console.log("me: " + config.user_id);
 				}
 				var name = data.markers[0].name;
-				if(data.markers[0].edit == 1) $("#lnkEdit").show();
-				if(data.markers[0].delete == 1) $("#lnkDelete").show();
+				if(data.markers[0].edit && data.markers[0].edit == 1) 
+					$("#lnkEdit").show();
+				else
+					$("#lnkEdit").hide();
+				if(data.markers[0].delete && data.markers[0].delete == 1) 
+					$("#lnkDelete").show();
+				else
+					$("#lnkDelete").hide();
 				if(!name) name = '';
 				$('#name').html(name);
 				$('#description').html(data.markers[0].desc);
@@ -513,12 +551,12 @@
 				$('#www').html(value);
 				$('#www').attr('href', 'http://' + value);
 				
-				$('#map_canvas_small').gmap('clear', 'markers');
-				$('#map_canvas_small').gmap('addMarker', { /*id:'m_1',*/ 
+				$(MAP_SMALL_ID).gmap('clear', 'markers');
+				$(MAP_SMALL_ID).gmap('addMarker', { /*id:'m_1',*/ 
 						'position': data.markers[0].lat + ',' + data.markers[0].lng, 
 						'bounds': true});
-				$('#map_canvas_small').gmap('option', 'zoom', 14);
-				$("#map_canvas_small").gmap('option', 'center', new google.maps.LatLng( data.markers[0].lat, data.markers[0].lng))
+				$(MAP_SMALL_ID).gmap('option', 'zoom', 14);
+				$(MAP_SMALL_ID).gmap('option', 'center', new google.maps.LatLng( data.markers[0].lat, data.markers[0].lng))
 				
 
 				$.mobile.changePage("#listing_detail");
@@ -697,8 +735,11 @@ username: "user"
 			}
 		});
 		$(document).on('pageshow', "#listing_detail", function () {
-			$('#map_canvas_small').gmap('refresh');
+			$(MAP_SMALL_ID).gmap('refresh');
 		});		
+
+
+
 		$(document).on('pageshow', "#map-page", function () {
 			$(MAP_ID).gmap('refresh',1);
 		});		
@@ -725,7 +766,7 @@ username: "user"
 
 						var row = template.clone();
 						row.removeClass("template");
-						row.find(".message").text(message);
+						row.find(".message").html(htmlForTextWithEmbeddedNewlines(message));
 						row.find(".user").text(user);
 						row.find(".date").text(timestamp);
 						list.append(row);
@@ -853,7 +894,6 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				openConversationPage($(this).attr("data-url"));
 			});
 			// item details page - 1
-
 			$("a.listing_link").live('click',function(e) {
 				loadingMsg(true);
 				var lid = $(this).attr("data-parm");
@@ -909,7 +949,6 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				$(map).click(function(e){
 					if(config.debug) console.log(e);
 					if(config.add_marker){
-
 						addListing({lat: e.latLng.lat(), lng: e.latLng.lng(), subtype: 'art and culture - ot'});
 					}
 				});
@@ -922,6 +961,8 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					setTimer();
 				});
 			});
+
+
 			// init map - 0
 			///////////////////////////////////////////////////////////////////////////
 			// main map page - 0
@@ -931,7 +972,18 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		});
 
 
-
+		$(document).on('pagebeforeshow', "#more", function () {
+			$("#more-username").text("");
+			if(config.user_id){
+				$("#more-username").text(config.username);
+				$("#more .logged-in").show();
+				$("#more .logged-out").hide();
+			}
+			else{
+				$("#more .logged-out").show();
+				$("#more .logged-in").hide();
+			}
+		});		
 
 </script>
 </head> 
@@ -939,38 +991,42 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 
 	<div data-role="page" id="search-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
-			<h1>CommunityFinder</h1>
-				<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
-                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
-                        <div data-role="navbar">
-                                <ul>
-                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
-                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-                                        <li><a id="lnkLogin" href="#login-page" data-rel="dialog">Login</a></li>
-                                        <li><a href="#register-page" data-rel="dialog">Register</a></li>
-                                        <li><a href="#logout-page">Logout</a></li>
-                                        <li><a href="#add-page" onClick="openAddPage()">Add</a></li>
-                                        <li><a href="#" onClick="openInboxPage()">Inbox</a></li>
-                                        <li><a href="#" onClick="loadMyMarkers()">Your Listings</a></li>
-                                        <li><a href="#" data-icon="gear">Settings</a></li>
-                                        <li><a href="#" data-icon="arrow-r">More</a></li>
-                                </ul>
-                        </div><!-- /navbar -->
-                    </div>
+            <div data-role="navbar" >
+                <ul>
+                    <li><a href="#search-page" onClick="openSearchPage();" data-mini="true" data-icon="search"></a></li>
+                    <li><a href="#map-page" onClick="openMapPage();" data-mini="true" data-icon="globe"></a></li>
+                    <li><a href="#add-page" onClick="openAddPage()" data-mini="true" data-icon="plus"></a></li>
+                    <li><a href="#more" data-icon="menu" data-mini="true" data-rel="dialog" data-transition="slidedown"></a></li>
+                </ul>
+            </div><!-- /navbar -->
 		</div><!-- /header -->
 
 		<div data-role="content">
-			<a href="#" id="lnkLocation" data-role="button" data-theme="b">Specify location </a>
-			<div id="divLocation" style="display: none">
-				<input id="txtLocation" type="text" value="brunswick west"><input id="btnLocation" type="button" value="Set Location">
-				<input id="btnMyLocation" type="button" value="Near Me" data-role="button" data-theme="a">
+			<div data-role="collapsible" data-mini="true" data-content-theme="d">
+				<h4>Specify location</h4>
+				
+				<fieldset class="ui-grid-a">
+					<div class="ui-block-a">
+						<input id="txtLocation" data-mini="true" type="text" value="brunswick west">
+					</div>
+					<div class="ui-block-b">
+						<input id="btnLocation" data-mini="true" type="button" value="Set Location" data-theme="b">
+					</div>
+				</fieldset>
+					<input id="btnMyLocation" data-mini="true" type="button" value="Near Me" data-role="button" data-theme="a">
 			</div>
 
-			<a href="#" id="lnkSearch" data-role="button" data-theme="b">Filter Results</a>
-			<div id="divSearch" style="display: none">
-				<input id="txtSearch" type="text">
-				<select id="ddlSearch"></select>
-				<input id="btnSearch" type="button" value="Filter">
+			<div data-role="collapsible" data-mini="true" data-content-theme="d">
+				<h4>Filter Results</h4>
+				<fieldset class="ui-grid-a">
+					<div class="ui-block-a">
+						<input id="txtSearch" data-mini="true" type="text">
+					</div>
+					<div class="ui-block-b">
+						<select id="ddlSearch" data-mini="true"></select>
+					</div>
+				</fieldset>
+				<input id="btnSearch" data-mini="true" type="button" value="Filter" data-theme="b">
 			</div>
 
 			<ul id='listItems' data-role="listview">
@@ -979,27 +1035,31 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 	</div><!-- /page -->
 
 
+   <div data-role="page" id="map-page" data-add-back-btn="true" style="">
+        <div data-role="header" data-position="fixed" data-id="head" id="headbar">
+            <div data-role="navbar" >
+                <ul>
+                    <li><a href="#search-page" onClick="openSearchPage();" data-mini="true" data-icon="search"></a></li>
+                    <li><a href="#map-page" onClick="openMapPage();" data-mini="true" data-icon="globe"></a></li>
+                    <li><a href="#add-page" onClick="openAddPage()" data-mini="true" data-icon="plus"></a></li>
+                    <li><a href="#more" data-icon="menu" data-mini="true" data-rel="dialog" data-transition="slidedown"></a></li>
+                </ul>
+            </div><!-- /navbar -->
+        </div><!-- /header -->
 
+        <div data-role="content" id="map_canvas">
+        </div><!-- /content -->
+       	<div id="item_summary">
+			<div data-role="controlgroup"  data-type="horizontal">
+				<a href="#listing_detail" onclick="openDetailsPage()" data-role="button" data-icon="info" data-iconpos="left" data-theme="c" data-inline="true" class="details">Item</a>
+				<!--
+				<a href="index.html" data-role="button" data-icon="arrow-l" data-iconpos="left" data-theme="c" data-inline="true">&nbsp;</a>
 
-       <div data-role="page" id="map-page" data-add-back-btn="true" style="">
-                <div data-role="header" data-position="fixed" data-id="head" id="headbar">
-                        <h1>CommunityFinder</h1>
-			<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
-                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
-                        <div data-role="navbar">
-                                <ul>
-                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
-                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-                                        <li><a href="#" data-icon="gear">Settings</a></li>
-                                        <li><a href="#" data-icon="arrow-r">More</a></li>
-                                </ul>
-                        </div><!-- /navbar -->
-                        </div>
-                </div><!-- /header -->
-
-                <div data-role="content" id="map_canvas">
-                </div><!-- /content -->
-        </div><!-- /page -->
+				<a href="index.html" data-role="button" data-icon="arrow-r" data-iconpos="left" data-theme="c" data-inline="true">&nbsp;</a>
+				-->
+			</div>
+        </div>
+    </div><!-- /page -->
 
 
 
@@ -1009,7 +1069,6 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
 			<div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
 			<div data-role="navbar">
-
 				<ul>    
 					<li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
 					<li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
@@ -1017,7 +1076,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					<li><a href="#" data-icon="arrow-r">More</a></li>
 				</ul>
 			</div><!-- /navbar -->
-			</div>
+		</div>
 		</div><!-- /header -->
 		<div data-role="content">
 <!-- 
@@ -1082,7 +1141,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 						ie. environment, social justice etc
 					</div>
 					<div>
-						<span title="Links listing to associated Wikipedia page, just start typing and we'll suggest exisiting pages on wikipedia" class="tag_link ui-icon ui-icon-info " style="float: right;"></span>
+						<span title="Links listing to associated Wikipedia page, just start typing and we'll suggest exisiting pages on wikipedia" class="tag_link ui-icon ui-icon-info " style="	float: right;"></span>
 						<label for="wiki">Wikipedia Page:</label>
 						<input id="edit-wiki" name="wiki" value="" class="fg-input ui-corner-all ui-autocomplete-input"  autocomplete="off">
 					</div>
@@ -1095,11 +1154,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 						<label for="rss">RSS: (ie http://..) </label>
 						<input id="edit-rss" name="rss" value="" class="fg-input ui-corner-all" >
 					</div>
-					
-					<div data-role="fieldcontain">
-						<input onclick="$('.invite_details').toggle();" type="checkbox" id="edit-is_invite" name="is_invite" class="fg-input ui-corner-all">
-						<label for="is_invite">Customise 'contact us' link</label>
-					</div>
+					<label><input type="checkbox" onclick="$('.invite_details').toggle();" id="edit-is_invite" name="is_invite" />Customise 'contact us' link</label>
 					<div class="invite_details" style="display: none;">
 						Instead of using the built in inbox system, provide either an email address, or 'contact us' form url to customise the 'contact user' link on this listing.
 					</div>	
@@ -1128,8 +1183,9 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		<div data-role="content">
 			<h3>Delete Marker?</h3>
 			<div data-inline="true">
-			    <a href="#" data-role="button" data-rel="back">Cancel</a>
 			    <a href="#" data-role="button" data-theme="b" onclick="deleteMarker(); return false;">Delete</a>
+			    <BR>
+			    <a href="#" data-role="button" data-rel="back">Cancel</a>
 			</div>
 		</div>
 	</div>
@@ -1137,20 +1193,16 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
         
 	<div data-role="page" id="listing_detail" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
-                        <h1>CommunityFinder</h1>
-                        <a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
-                        <div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
-                        <div data-role="navbar">
+            <div data-role="navbar" >
+                <ul>
+                    <li><a href="#search-page" onClick="openSearchPage();" data-mini="true" data-icon="search"></a></li>
+                    <li><a href="#map-page" onClick="openMapPage();" data-mini="true" data-icon="globe"></a></li>
+                    <li><a href="#add-page" onClick="openAddPage()" data-mini="true" data-icon="plus"></a></li>
+                    <li><a href="#more" data-icon="menu" data-mini="true" data-rel="dialog" data-transition="slidedown"></a></li>
+                </ul>
+            </div><!-- /navbar -->
+		</div><!-- /header -->
 
-                                <ul>    
-                                        <li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
-                                        <li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-                                        <li><a href="#" data-icon="gear">Settings</a></li>
-                                        <li><a href="#" data-icon="arrow-r">More</a></li>
-                                </ul>
-                        </div><!-- /navbar -->
-                        </div>
-                </div><!-- /header -->
 		<div data-role="content">
 			<h1 id="name">CommunityFinder</h1>
 			<div class="ui-grid-a">
@@ -1258,7 +1310,9 @@ old code
 			<h1>Comments</h1>
 		</div>
 		<div data-role="content">
+			<h2 id="name-comments"></h2>
 			<ul class="list" data-role="listview" data-theme="d" data-divider-theme="d">
+		        <li data-role="list-divider">You need to select a page:</li> 
 			</ul>
 			<ul data-role="listview" data-theme="d" data-divider-theme="d">
 				<li>
@@ -1281,6 +1335,20 @@ old code
 
 
 	</div><!-- /page -->
+
+	<div id="more" data-role="page" class="dialog-actionsheet">
+		<div data-role="content" data-theme="a">
+			<h1 class="logged-in" id="more-username"></h1>
+	        <a class="logged-out" href="#login-page" data-theme="b" data-role="button" data-rel="dialog" data-transition="slidedown" >Login</a>
+	        <a class="logged-out" href="#register-page" data-theme="b" data-role="button" data-rel="dialog" data-transition="slidedown" >Register</a>
+	        <a class="logged-in" href="#" onClick="openInboxPage()" data-theme="b" data-role="button">Inbox</a>
+	        <a class="logged-in" href="#" onClick="loadMyMarkers()"data-theme="b" data-role="button">Your Listings</a>
+	        <br class="logged-in" >
+	        <a class="logged-in" href="#logout-page" data-theme="b" data-role="button" data-rel="dialog" >Logout</a>
+	        <br>
+			<a href="#" data-role="button" data-rel="back" data-theme="a">Cancel</a>    
+		</div>
+	</div>
 
 	<div data-role="page" id="inbox-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head">
@@ -1337,22 +1405,21 @@ old code
 	        <a data-role="button" data-rel="back">Ok</a>
 	    </div>
 	</div>
-	<div data-role="page" id="login-page" data-add-back-btn="true">
+	<div data-role="dialog" id="login-page" data-add-back-btn="true">
 		<div data-role="header">
 			<h1>Login</h1>
 		</div>
-
 		<div data-role="content">
 			<form>
-			<div data-role="fieldcontain">
-				<label for="login-user">Username / Email:</label>
-	    		<input type="text" name="login-user" id="login-user" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="login-pass">Password:</label>
-	    		<input type="password" name="login-pass" id="login-pass" value=""  />
-			</div>	
-			<input type="button" value="Login" onClick="login()">
+				<div data-role="fieldcontain">
+					<label for="login-user">Username / Email:</label>
+		    		<input type="text" name="login-user" id="login-user" value=""  />
+				</div>	
+				<div data-role="fieldcontain">
+					<label for="login-pass">Password:</label>
+		    		<input type="password" name="login-pass" id="login-pass" value=""  />
+				</div>	
+				<input type="submit" value="Login" onClick="login(); return false;">
 			</form>
 
 		</div>
@@ -1363,23 +1430,23 @@ old code
 		</div>
 		<div data-role="content">
 			<form>
-			<div data-role="fieldcontain">
-				<label for="register-email">Email:</label>
-	    		<input type="text" name="register-email" id="register-email" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-pass">Password:</label>
-	    		<input type="password" name="register-pass" id="register-pass" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-full-name">Full name:</label>
-	    		<input type="text" name="register-full-name" id="register-full-name" value=""  />
-			</div>	
-			<div data-role="fieldcontain">
-				<label for="register-user">Username:</label>
-	    		<input type="text" name="register-user" id="register-user" value=""  />
-			</div>	
-			<input type="button" value="Register" onClick="register()">
+				<div data-role="fieldcontain">
+					<label for="register-email">Email:</label>
+		    		<input type="text" name="register-email" id="register-email" value=""  />
+				</div>	
+				<div data-role="fieldcontain">
+					<label for="register-pass">Password:</label>
+		    		<input type="password" name="register-pass" id="register-pass" value=""  />
+				</div>	
+				<div data-role="fieldcontain">
+					<label for="register-full-name">Full name:</label>
+		    		<input type="text" name="register-full-name" id="register-full-name" value=""  />
+				</div>	
+				<div data-role="fieldcontain">
+					<label for="register-user">Username:</label>
+		    		<input type="text" name="register-user" id="register-user" value=""  />
+				</div>	
+				<input type="submit" value="Register" onClick="register(); return false;">
 			</form>
 		</div>
 	</div>
