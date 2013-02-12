@@ -236,10 +236,11 @@
 					$("#listItems").append(jQuery("<li>").html("No results found"));
 				}
 				else{
+                    $("#listItems").append(jQuery("<li>").html('<a class="info-box listing_link" onClick="openMapPage();return false;">See All On Map</a>'));
 					for(var i = 0; i < data.markers.length; i++){
 						var m = data.markers[i];
-						var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng} };
-						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '</a>'));
+                      var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng, description: m.desc} };
+						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '<br/><span style="font-size:11px;">' + m.subtype + '</span><br/><span style="font-size:11px;">' + m.desc + '</span></a>'));
 					}
 				}
 				$("#listItems").listview("refresh");
@@ -921,6 +922,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				}).addEventListener('zoom_changed', function(){
 					setTimer();
 				});
+                                                                                                             
 			});
 			// init map - 0
 			///////////////////////////////////////////////////////////////////////////
