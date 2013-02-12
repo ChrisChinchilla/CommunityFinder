@@ -175,6 +175,7 @@ $format = ($_GET['format']) ? $_GET['format'] : 'xml';
 					$user_id = (int) $user_id;
 					if($user_id == 0) $user_id = ANONYMOUS_USER;
 					$theUser = (int) @$_SESSION['user']['user_id'];
+					if($theUser == 0) $theUser = ANONYMOUS_USER;
 
 					$edit = false;
 					$delete = false;

@@ -161,12 +161,18 @@ h5#address
     -webkit-animation:fade 3000ms infinite;
 }
 
-		ul#listItems {
-			margin-top: 1em;
-		}
-		a.listing_link {
-			color: #0000ff;
-		}
+ul#listItems {
+	margin-top: 1em;
+}
+a.listing_link {
+	color: #0000ff;
+}
+
+#item_summary {
+    position: absolute;
+    bottom: 0;
+    left: 70px;
+}
 
 //#map-page, .ui-content, #map_canvas { 
 //    height: 200px; padding: 0; 
@@ -196,3 +202,17 @@ h5#address
     //border-top: none;
     //background: rgba(0,0,0,.5);
     //margin: 0 -1px;
+}
+/* disable truncating long lists items */
+body .ui-li .ui-li-desc {
+    white-space: normal;
+}
+
+.ui-icon.ui-icon-menu {
+    background-image: url("../images/icons-18-white_1.3.0_rc1.png");
+    background-position: -788px -1px;
+}
+.ui-icon.ui-icon-globe {
+    background-image: url("../images/icons-18-white_1.3.0_rc1.png");
+    background-position: -718px -1px;
+}
