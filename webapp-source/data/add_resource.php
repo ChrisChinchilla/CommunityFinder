@@ -10,11 +10,11 @@ $lng = $_POST['lng'];
 $is_invite = $_POST['is_invite'];
 $invite_email = $_POST['invite_email'];
 $alt_contact = $_POST['alt_contact'];
-
+$error = "";
 if($_SESSION['user']['user_id']) {
 	$user_id = $_SESSION['user']['user_id'];
-} 
-else {$user_id = 133;} // 133 is anonymous user...
+#} # disable anynoymous adding
+#else {$user_id = 133;} // 133 is anonymous user... # disable anynoymous adding
 
 	$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
 	// GET subtype_id from subtype table...
@@ -54,6 +54,11 @@ else {$user_id = 133;} // 133 is anonymous user...
 			$stmt->close();
 		}
 	}
+	$mysqli->close();
+}
+else{
+	$error = "Not authorized";
+}
 	if ($success) {
 		header('Content-Type: text/xml');
 		print('<response>');
@@ -65,7 +70,7 @@ else {$user_id = 133;} // 133 is anonymous user...
 		header('Content-Type: text/xml');
 		print('<response>');
 		print('<response_state success="false" />');
+                print('<error message="' . $error .'" />');
 		print('</response>');		
 	}
-	$mysqli->close();
 ?>

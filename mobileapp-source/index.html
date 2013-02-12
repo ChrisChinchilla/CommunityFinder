@@ -712,8 +712,13 @@ username: "user"
 			var comment_text = $('#comment').val();
 			loadingMsg(true);
 			$.post(config.prefix + 'data/add_listing_comment.php', {lid:lid, comment_text:comment_text}, function(data){
-				$('#comment').val("");
-				openCommentsPage(lid);	
+				if($(data).find("response_state").attr("success") == 'true') {
+					$('#comment').val("");
+					openCommentsPage(lid);	
+				}			
+				else {
+					popupMsg("Error commenting: " + $(data).find("error").attr("message"));
+				}
 			});
 			//$("#listing_comments_add").hide();
 

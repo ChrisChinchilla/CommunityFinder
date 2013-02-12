@@ -63,9 +63,10 @@ if (!mysqli_connect_errno()) {
 $marker_owner_id = (int) $marker_owner_id; 
 if($marker_owner_id < 1) $marker_owner_id = ANONYMOUS_USER;
 $user_id = (int) $_SESSION['user']['user_id'];
-if($user_id < 1) $user_id = ANONYMOUS_USER;
+#if($user_id < 1) $user_id = ANONYMOUS_USER; # disable anonymous adding
 
-if($marker_owner_id == ANONYMOUS_USER || $marker_owner_id == $user_id) {
+#if($marker_owner_id == ANONYMOUS_USER || $marker_owner_id == $user_id) { # disable anynoymous adding
+if( $marker_owner_id == $user_id) {
 	// update (add + remove) tags to reflect updated tags string  
 	updateTags($marker_id, $tags, $mysqli);
 	// check connection

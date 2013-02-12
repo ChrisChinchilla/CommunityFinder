@@ -4,11 +4,11 @@ include('./bootstrap.php');
 $lid = $_POST['lid'];
 $name = htmlspecialchars($_POST['name']);
 $comment_text = htmlspecialchars($_POST['comment_text']);
-
+$id = false;
 if($_SESSION['user']['user_id']) {
 	$user_id = $_SESSION['user']['user_id'];
-} 
-else {$user_id = 133;} // 133 is anonymous user...
+#} # disable anynoymous adding
+#else {$user_id = 133;} // 133 is anonymous user... # disable anynoymous adding
 
 	$mysqli = new mysqli($SITE['DB_HOST'], $SITE['DB_USERNAME'], $SITE['DB_PW'], $SITE['DB_NAME']);
 	if (!mysqli_connect_errno() && $comment_text) {
@@ -21,6 +21,13 @@ else {$user_id = 133;} // 133 is anonymous user...
 			$stmt->close();
 		}
 	}
+	$mysqli->close();
+	if(!$id) $error = "Could not save comment";
+}
+else{
+	$error = "Not authorized";
+}
+
 	if ($id) {
 		header('Content-Type: text/xml');
 		print('<response>');
@@ -32,8 +39,7 @@ else {$user_id = 133;} // 133 is anonymous user...
 		header('Content-Type: text/xml');
 		print('<response>');
 		print('<response_state success="false" />');
-		print('<error message="Could not save comment" />');
+		print('<error message="' . $error .'" />');
 		print('</response>');		
 	}
-	$mysqli->close();
 ?>
