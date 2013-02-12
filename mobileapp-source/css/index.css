@@ -178,6 +178,12 @@ a.listing_link {
 //    height: 200px; padding: 0; 
 //}
 
+#listItemsMessages {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+
 #map_canvas { 
     height: 100%;
 }

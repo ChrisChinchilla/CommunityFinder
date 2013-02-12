@@ -230,7 +230,9 @@
 			//*/		
 			
 			$.getJSON(config.prefix + 'data/get_markers.php', {format:"json",north_lat:north_lat, east_lng:east_lng, south_lat:south_lat, west_lng:west_lng, filter_text: filter_text, filter_subtype: filter_subtype, username:username, listing_id: lid /*, limit: 20 //*/ }, function(data) {
-				$("#listItems").empty();
+                $("#listItems").empty();
+                $("#listItemsMessages").empty();
+                      
 				$(MAP_ID).gmap('clear', 'markers');
 
 				/*
@@ -242,10 +244,10 @@
 				*/
 				
 				if(!data.markers || data.markers.length == 0){
-					$("#listItems").append(jQuery("<li>").html("No results found"));
+					$("#listItems").append($("<li>").html("No results found"));
 				}
 				else{
-                    $("#listItems").append(jQuery("<li>").html('<a class="info-box listing_link" onClick="openMapPage();return false;">See All On Map</a>'));
+                    $("#listItemsMessages").html('<li><a style="text-align:center;" onClick="openMapPage();">View All Listings On Map</a></li>');
 					for(var i = 0; i < data.markers.length; i++){
 						var m = data.markers[i];
                       var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng, description: m.desc} };
@@ -253,7 +255,8 @@
 					}
 				}
 				$("#listItems").listview("refresh");
-				loadMarkersFromList();
+                $("#listItemsMessages").listview("refresh");
+                loadMarkersFromList();
 				loadingMsg(false);
 			});
 		}
@@ -1004,21 +1007,25 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		</div><!-- /header -->
 
 		<div data-role="content">
-			<div data-role="collapsible" data-mini="true" data-content-theme="d">
+			 
+            <input id="txtSearch" data-mini="true" type="search" />
+            <input id="btnSearch" data-mini="true" type="button" value="Go" data-theme="b" />
+            
+            <div data-role="collapsible" data-mini="true" data-content-theme="d">
 				<h4>Specify location</h4>
 				
 				<fieldset class="ui-grid-a">
 					<div class="ui-block-a">
-						<input id="txtLocation" data-mini="true" type="text" value="brunswick west">
+						<input id="txtLocation" data-mini="true" type="text" value="brunswick west" />
 					</div>
 					<div class="ui-block-b">
-						<input id="btnLocation" data-mini="true" type="button" value="Set Location" data-theme="b">
+						<input id="btnLocation" data-mini="true" type="button" value="Set Location" data-theme="b" />
 					</div>
 				</fieldset>
-					<input id="btnMyLocation" data-mini="true" type="button" value="Near Me" data-role="button" data-theme="a">
+					<input id="btnMyLocation" data-mini="true" type="button" value="Near Me" data-role="button" data-theme="a" />
 			</div>
 
-			<div data-role="collapsible" data-mini="true" data-content-theme="d">
+			<!-- <div data-role="collapsible" data-mini="true" data-content-theme="d">
 				<h4>Filter Results</h4>
 				<fieldset class="ui-grid-a">
 					<div class="ui-block-a">
@@ -1029,8 +1036,9 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					</div>
 				</fieldset>
 				<input id="btnSearch" data-mini="true" type="button" value="Filter" data-theme="b">
-			</div>
-
+			</div> -->
+            <ul id='listItemsMessages' data-role="listview">
+            </ul>
 			<ul id='listItems' data-role="listview">
 			</ul>
 		</div><!-- /content -->
