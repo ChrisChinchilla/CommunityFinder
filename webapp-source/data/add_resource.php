@@ -57,7 +57,7 @@ if($_SESSION['user']['user_id']) {
 	$mysqli->close();
 }
 else{
-	$error = "Not authorized";
+	$error = "Please log in to add a listing";
 }
 	if ($success) {
 		header('Content-Type: text/xml');

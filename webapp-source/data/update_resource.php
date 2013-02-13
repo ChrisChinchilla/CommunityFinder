@@ -22,7 +22,7 @@ $alt_contact_url = htmlspecialchars($_POST['invite_url']);
 $alt_contact_text = htmlspecialchars($_POST['invite_text']);
 $address = htmlspecialchars($_POST['address']);
 $phone = htmlspecialchars($_POST['phone']);
-
+$lid = $_POST['lid'];
 // Tidy up datetime
 if($datetime_on) {
 	// add leading 0 to any single diget...
@@ -66,7 +66,7 @@ $user_id = (int) $_SESSION['user']['user_id'];
 #if($user_id < 1) $user_id = ANONYMOUS_USER; # disable anonymous adding
 
 #if($marker_owner_id == ANONYMOUS_USER || $marker_owner_id == $user_id) { # disable anynoymous adding
-if( $marker_owner_id == $user_id) {
+if( $marker_owner_id == $user_id || $marker_owner_id == ANONYMOUS_USER && $user_id != 0) {
 	// update (add + remove) tags to reflect updated tags string  
 	updateTags($marker_id, $tags, $mysqli);
 	// check connection
@@ -181,7 +181,10 @@ if( $marker_owner_id == $user_id) {
 	}
 }
 else{
-	$errMsg = "Not logged in / No access";
+	if( $user_id == 0 && $marker_owner_id == ANONYMOUS_USER)
+		$errMsg = "Not logged in. Login to in order to update this listing";
+	else 
+		$errMsg = "No access to edit. Login as the owner or admin to update this listing";
 }
 $mysqli->close(); // close connection
 

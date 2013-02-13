@@ -25,7 +25,7 @@ if($_SESSION['user']['user_id']) {
 	if(!$id) $error = "Could not save comment";
 }
 else{
-	$error = "Not authorized";
+	$error = "Not logged in. Log in to comment";
 }
 
 	if ($id) {
