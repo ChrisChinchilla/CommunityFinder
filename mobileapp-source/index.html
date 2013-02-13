@@ -492,7 +492,7 @@
 				if($(data).find("response_state").attr("success") == 'true') {
 					popupMsg("Deleted");
 					config.delete_refresh = true;
-					window.history.go(-3);
+					openMapPage();
 				}
 				else
 					popupMsg("Error deleting: " + $(data).find("error").attr("message"));
@@ -521,10 +521,10 @@
 					$("#lnkDelete").hide();
 				if(!name) name = '';
 				$('#name').html(name);
-				$('#description').html(data.markers[0].desc);
+				$('#description').html(htmlForTextWithEmbeddedNewlines(data.markers[0].desc));
 				$('#user').text(data.markers[0].username);
 				$('#type').html(data.markers[0].type);
-				$('#address').html(data.markers[0].address);
+				$('#address').html(htmlForTextWithEmbeddedNewlines(data.markers[0].address));
 				$('#phone').html(data.markers[0].phone);
 				$('#phone').attr('href', 'tel:' + data.markers[0].phone);
 
