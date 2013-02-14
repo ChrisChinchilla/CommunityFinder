@@ -312,8 +312,7 @@
 					this.setAnimation(google.maps.Animation.BOUNCE);
 					var data = $(el).find('.info-box');
 					$("#item_summary .details").attr("data-parm", data.attr("data-parm")).show();
-					$("#item_summary .details .ui-btn-text").text(data.text());
-
+					$("#item_summary .details .ui-btn-text").html(data.html());
 					//$(MAP_ID).gmap('openInfoWindow', { 'content': $(el).find('.info-box').parent().html() }, this);
 				});
 			});		
