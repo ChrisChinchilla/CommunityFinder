@@ -331,8 +331,9 @@
 		function loadCategories(){
 			var restrict_subtype = '';
 			$.get(config.prefix + 'data/get_subtypes.php',{restrict_subtype: restrict_subtype}, function(data) {
-				$("#ddlSearch").html("");
-				$("#ddlSearch").append(jQuery("<option>").attr("value", "").html("-- Any --"));
+				var element = $("#edit-category");
+				element.html("");
+				element.append(jQuery("<option>").attr("value", " ").html("-- Choose One --"));
 				$(data).find('icon').each(function(i) {	
 					var subtype = $(this).attr('subtype');
 					var type = $(this).attr('type');
@@ -342,7 +343,7 @@
 					var type_name = $(this).attr("type_name");
 					var prefixes = ($(this).attr("prefixes")) ? ($(this).attr("prefixes")).split(',') : null;
 					var prefixes_help = $(this).attr("prefixes_help");
-					$("#ddlSearch").append(jQuery("<option>").attr("value", subtype).html(subtype_name));
+					element.append(jQuery("<option>").attr("value", subtype).html(subtype_name));
 				});
 			});
 		}
@@ -407,6 +408,7 @@
 		}
 		function openAddPage(){
 			openMapPage(true);
+			// popupMsg("Touch map to add a listing");
 		}
 		function openMapPage(add) {
             if(add){
@@ -518,7 +520,7 @@
 				$('#name').html(name);
 				$('#description').html(htmlForTextWithEmbeddedNewlines(data.markers[0].desc));
 				$('#user').text(data.markers[0].username);
-				$('#type').html(data.markers[0].type);
+				$('#type').html(data.markers[0].subtype_name);
 				$('#address').html(htmlForTextWithEmbeddedNewlines(data.markers[0].address));
 				$('#phone').html(data.markers[0].phone);
 				$('#phone').attr('href', 'tel:' + data.markers[0].phone);
@@ -567,9 +569,39 @@
 		}
 		
 		function openEditPage(lid){
+			loadingMsg(true);
 			if(!lid) lid = $("#listing_detail").attr("data-parm");
 			$("#edit_detail").attr("data-parm", lid);
-			loadingMsg(true);
+			if(!lid) lid = "";
+			if(lid == ""){
+				$("#edit-category-div").show();
+				$("#edit-subtype").val("");
+				$("#edit-type").val("");
+				try{
+					$('#edit-category').val("").selectmenu('refresh');
+				}catch(err){}
+				$('#edit-name').val("");
+				$('#edit-description').val("");
+				$('#edit-phone').val("");
+				$('#edit-address').val("");
+				$('#edit-tags_general').val("");
+				$("#edit-tags_type_of_group").val("");
+				$("#edit-wiki").val("");
+				$("#edit-www").val("");
+				$("#edit-rss").val("");
+				$('.invite_details').hide();
+				try{
+					$("#edit-is_invite").removeAttr("checked").checkboxradio('refresh');
+				}catch(err){}
+				$("#edit-invite_email").val("");
+				$("#edit-invite_url").val("");
+
+				loadingMsg(false);
+				$.mobile.changePage( "#edit_detail", { transition: "slide"				});
+			}
+			else { // currently dont support editing subtype
+				$("#edit-category-div").hide();
+			}
 			$.getJSON(config.prefix + 'data/get_markers.php?format=json&listing_id=' + lid, function(data) {
 					
 					//console.log(data.markers[0]);
@@ -608,40 +640,49 @@ username: "user"
 
 
 */					
-					$("#edit-lat").val(data.markers[0].lat);
-					$("#edit-lng").val(data.markers[0].lng);
-					$("#edit-subtype").val(data.markers[0].subtype);
-					$("#edit-type").val(data.markers[0].type);
-					
-					var name = data.markers[0].name;
-					
-					$('#edit-category').text(data.markers[0].subtype + "("+ data.markers[0].type +")");
-					$('#edit-category').text(data.markers[0].subtype_name);
-					
-					
-					$('#edit-name').val(name);
-					$('#edit-description').val(data.markers[0].desc);
-					$('#edit-phone').val(data.markers[0].phone);
-					$('#edit-address').val(data.markers[0].address);
+					if(data && data.markers && data.markers.length > 0)
+					{
+						$("#edit-lat").val(data.markers[0].lat);
+						$("#edit-lng").val(data.markers[0].lng);
+						$("#edit-subtype").val(data.markers[0].subtype);
+						$("#edit-type").val(data.markers[0].type);
+						
+						var name = data.markers[0].name;
+						try{
+							$('#edit-category').val(data.markers[0].subtype).selectmenu('refresh');
+						}catch(err){}
+						//$('#edit-category').text(data.markers[0].subtype + "("+ data.markers[0].type +")");
+						//$('#edit-category').text(data.markers[0].subtype_name);
+						
+						
+						$('#edit-name').val(name);
+						$('#edit-description').val(data.markers[0].desc);
+						$('#edit-phone').val(data.markers[0].phone);
+						$('#edit-address').val(data.markers[0].address);
 
-					var tags = data.markers[0].tags;
-					var delim = "type of group:";
-					$('#edit-tags_general').val(tags.substr(0,tags.indexOf(delim)));
-					$("#edit-tags_type_of_group").val(tags.substr(tags.indexOf(delim)).replace(new RegExp(delim, "g"), ""));
-					$("#edit-wiki").val(data.markers[0].wiki);
-					$("#edit-www").val(data.markers[0].www);
-					$("#edit-rss").val(data.markers[0].rss);
-					$('.invite_details').hide();
-					if(data.markers[0].ac_on == 1) {
-						$('.invite_details').show();
-						$("#edit-is_invite").attr("checked", "checked");
-					}
-					else{
+						var tags = data.markers[0].tags;
+						var delim = "type of group:";
+						$('#edit-tags_general').val(tags.substr(0,tags.indexOf(delim)));
+						$("#edit-tags_type_of_group").val(tags.substr(tags.indexOf(delim)).replace(new RegExp(delim, "g"), ""));
+						$("#edit-wiki").val(data.markers[0].wiki);
+						$("#edit-www").val(data.markers[0].www);
+						$("#edit-rss").val(data.markers[0].rss);
 						$('.invite_details').hide();
-						$("#edit-is_invite").removeAttr("checked");
+						if(data.markers[0].ac_on == 1) {
+							$('.invite_details').show();
+							try{
+								$("#edit-is_invite").attr("checked", "checked").checkboxradio('refresh');
+							}catch(err){}
+						}
+						else{
+							$('.invite_details').hide();
+							try{
+								$("#edit-is_invite").removeAttr("checked").checkboxradio('refresh');
+							}catch(err){}
+						}
+						$("#edit-invite_email").val(data.markers[0].ac_email);
+						$("#edit-invite_url").val(data.markers[0].ac_url);
 					}
-					$("#edit-invite_email").val(data.markers[0].ac_email);
-					$("#edit-invite_url").val(data.markers[0].ac_url);
 					loadingMsg(false);
 					$.mobile.changePage( "#edit_detail", { transition: "slide"} );
 				});
@@ -807,6 +848,13 @@ username: "user"
 		
 
 		function addListing(data){
+			config.add_marker = false;
+			$("#edit-lat").val(data.lat);
+			$("#edit-lng").val(data.lng);
+			$("#listing_detail").attr("data-parm","");
+			openEditPage("");
+		}
+		function addandUpdateListing(data){
 			$.post(config.prefix + 'data/add_resource.php', 
 				{
 					title: '',
@@ -820,14 +868,19 @@ username: "user"
 					// <response><response_state success="true" /><marker lid="8549" /></response>
 					if($(data).find("response_state").attr("success") == 'true') {
 						config.add_marker = false;
-						openEditPage($(data).find("marker").attr("lid"));
+						editListing($(data).find("marker").attr("lid"));
 					}
 					else {
 						var msg = $(data).find("error").attr("message"); if(!msg) msg = '';
-						if(doOnFailure) {doOnFailure('Failed to save: ' + msg);}
+						if(doOnFailure) {
+							if($("#edit-category").val() == "")
+								doOnFailure('Failed to save: ' + msg);
+							else
+								doOnFailure('Failed to save: ' + msg);
+						}
 					}
 				}
-			);			
+			);	
 		}
 		// does the actual data transfer to server in order to edit a listing
 		function editListing(lid){
@@ -850,7 +903,15 @@ invite_url:
 address:1
 phone:123
 tags:,organic,transport,general,type of group:sustainability,type of group:type
-*/				
+*/			
+			if(!lid || lid == ""){
+				addandUpdateListing({
+					subtype: $("#edit-category").val(),
+					lat:$("#edit-lat").val(),
+					lng:$("#edit-lng").val()
+				});
+				return;
+			}
 			var data = {};
 			data.lid = lid;
 			var alltags = '';
@@ -867,8 +928,8 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					lid: data.lid,
 					title: $("#edit-name").val(),
 					desc: $("#edit-description").val(),
-					type:$("#edit-type").val(),
-					subtype:$("#edit-subtype").val(),
+//					type:$("#edit-type").val(),
+					subtype:$("#edit-category").val(),
 					lat:$("#edit-lat").val(),
 					lng:$("#edit-lng").val(),
 					www:$("#edit-www").val(),
@@ -954,7 +1015,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				$(map).click(function(e){
 					if(config.debug) console.log(e);
 					if(config.add_marker){
-						addListing({lat: e.latLng.lat(), lng: e.latLng.lng(), subtype: 'art and culture - ot'});
+						addListing({lat: e.latLng.lat(), lng: e.latLng.lng()});
 					}
 				});
 				// drag map. load search after 1 second after drag ends
@@ -1108,10 +1169,12 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				</table>        
 -->
 				<form>
-					Category: <b id='edit-category'></b>
-
 					<input id='edit-lat' type="hidden" >
 					<input id='edit-lng' type="hidden" >
+					<div id='edit-category-div'>
+						<label for="category">Category: </label>
+						<select id='edit-category' name="category" value="" class="fg-input ui-corner-all"></select>
+					</div>
 					<div>
 						<span title="" style="float: right;" class="tag_link ui-icon ui-icon-info "></span>
 						<label for="name">Title: </label>
