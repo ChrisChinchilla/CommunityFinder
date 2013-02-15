@@ -168,14 +168,10 @@
 				$.post(config.prefix + 'data/login.php', {email_or_username:email_or_username, password:password}, function(data) {
 					//$("#register_wait").css("display", "none");
 					if($(data).find("response_state").attr("success") == 'true') {
-						//that.email = $(data).find("user").attr("email");
-						//that.full_name = $(data).find("user").attr("full_name");
-						//that.username = $(data).find("user").attr("username");
 						config.email = $(data).find("user").attr("email");
 						config.full_name = $(data).find("user").attr("full_name");
 						config.username = $(data).find("user").attr("username");
 						config.user_id = $(data).find("user").attr("user_id");
-						//if(doOnSuccess) {doOnSuccess(that.username);}
 						popupMsg("Logged in");
 						openSearchPage();
 					}
@@ -204,7 +200,7 @@
 			var filter_subtype = $("#ddlSearch").val();
 			var username = "";
 			var lid = "";
-			//$("#listItems").prepend("Loading items...")
+			
 			loadingMsg(true);
 			if(north_lat == south_lat || east_lng == west_lng){
 				north_lat += 0.05;
@@ -212,6 +208,7 @@
 				east_lng += 0.05;
 				west_lng -= 0.05;
 			}
+
 			// to fix 
 			// http://www.communityfinder.net/index.php?theme=undefined&zoom=14&lat=-37.790658897800206&lng=144.99361038208008&subtype=all
 
@@ -313,7 +310,6 @@
 					var data = $(el).find('.info-box');
 					$("#item_summary .details").attr("data-parm", data.attr("data-parm")).show();
 					$("#item_summary .details .ui-btn-text").html(data.html());
-					//$(MAP_ID).gmap('openInfoWindow', { 'content': $(el).find('.info-box').parent().html() }, this);
 				});
 			});		
 		}
@@ -1012,9 +1008,14 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		</div><!-- /header -->
 
 		<div data-role="content">
-			 
-            <input id="txtSearch" data-mini="true" type="search" />
-            <input id="btnSearch" data-mini="true" type="button" value="Go" data-theme="b" />
+			<fieldset class="ui-grid-a">
+				<div class="ui-block-a">
+					<input id="txtSearch" data-mini="true" type="search" />
+				</div>
+				<div class="ui-block-b">
+					<input id="btnSearch" data-mini="true" type="button" value="Go" data-theme="b" />
+				</div>
+			</fieldset>
             
             <div data-role="collapsible" data-mini="true" data-content-theme="d">
 				<h4>Specify location</h4>
@@ -1027,7 +1028,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 						<input id="btnLocation" data-mini="true" type="button" value="Set Location" data-theme="b" />
 					</div>
 				</fieldset>
-					<input id="btnMyLocation" data-mini="true" type="button" value="Near Me" data-role="button" data-theme="a" />
+				<input id="btnMyLocation" data-mini="true" type="button" value="Near Me" data-role="button" data-theme="a" />
 			</div>
 
 			<!-- <div data-role="collapsible" data-mini="true" data-content-theme="d">
@@ -1074,18 +1075,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 
 	<div data-role="page" id="edit_detail" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
-			<h1>CommunityFinder</h1>
-			<a href="#toolbarPanel" data-rel="popup" data-transition="slide" data-position-to="window" data-role="button" class="ui-btn-right" data-icon="arrow-d">Menu</a>
-			<div data-role="popup" id="toolbarPanel" data-corners="false" data-theme="none" data-shadow="false" data-tolerance="0,0" data-position-to="#">
-			<div data-role="navbar">
-				<ul>    
-					<li><a href="#" onClick="openSearchPage();" data-icon="search">Find</a></li>
-					<li><a href="#" onClick="openMapPage();" data-icon="plus">Map</a></li>
-					<li><a href="#" data-icon="gear">Settings</a></li>
-					<li><a href="#" data-icon="arrow-r">More</a></li>
-				</ul>
-			</div><!-- /navbar -->
-		</div>
+			<h1>Add / Edit Listing</h1>
 		</div><!-- /header -->
 		<div data-role="content">
 <!-- 
