@@ -528,14 +528,15 @@
 				$('#phone').attr('href', 'tel:' + data.markers[0].phone);
 
 
-				$('#link_code').hide();
-				$('#embed_code').hide()
 
 				var escaped_name = name.replace("\"", "\\\"");
 				$(".share.href").each(function(i){
 					var val = $(this).attr("href");
 					val = val.replace("{id}", lid);
 					val = val.replace("{name}", escaped_name);
+					val = val.replace("{zoom}", 14); // to dynamically change this?
+					val = val.replace("{lat}", data.markers[0].lat);
+					val = val.replace("{lng}", data.markers[0].lng);
 					$(this).attr("href", val);
 				});
 				$(".share.value").each(function(i){
@@ -1246,73 +1247,26 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
         	<h5>
 				Added by <span id="user"></span>
 			</h5>
-			
-			
-			
+			</div>
 			
 
 			<a href="#comments-page" onclick="openCommentsPage()" data-role="button" data-icon="arrow-r" data-iconpos="right">Comments</a>
 			<a id="lnkEdit" href="#edit-page" onclick="openEditPage()" data-role="button" data-rel="dialog">Edit</a>
 			<a id="lnkDelete" href="#delete-page" data-role="button" data-rel="dialog">Delete</a>
 			
-
-			<div data-role="collapsible" data-mini="true">
+			<div class="ui-body ui-body-d">
 				<h4>Share link</h4>
-				<ul>
-					<li><img src="images/twitter_share.png" /> <a class="share href" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://communityfinder.net/index.php?lid={id}">Tweet about it on Twitter</a>
-					</li>
-					<li>
-					<img src="images/facebook_share.gif" /> <a class="share href" target="_blank" href="http://www.facebook.com/sharer.php?u=http://communityfinder.net/index.php?lid={id}">Share it on Facebook</a>
-					</li>
-					<li><img src="images/link_share.jpg" /> <a href="#" onclick="$('#link_code').toggle('normal');$('#embed_code').hide('slow'); return(false);">Email / Link to this Listing</a></p>	
-						<p id="link_code" style="display:none;">Cut and Paste the following code to link to this listing: <br/>
-					<input type="text" class="share value" value="http://communityfinder.net/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" /></p>	
-					</li>	
-				</ul>
-			</div>
-
-
-				<!-- 
-					<a target="_blank" href="http://twitter.com/home?status=Just found St Johns Op Shop - Brunswick West. http://victoriacommunity.org/index.php?lid=7519">Tweet about it on Twitter</a>
-						<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://google.com" data-text="test">Tweet</a>
-	<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>	
-
-
-
-New Sharing
-	Twitter: https://twitter.com/about/resources/buttons#tweet
-	Facebook: requires app API key...
-		http://developers.facebook.com/docs/reference/plugins/send/
-		http://developers.facebook.com/docs/reference/plugins/like/
-old code
-	var text_share = '<div class="info_window" style="height: 130px; overflow:hide;">'; 
-	text_share += '<p><img style="margin-bottom: -4px;" src="images/twitter_share.png" /> <a target="_blank" href="http://twitter.com/home?status=Just found ' + this.name + '. http://victoriacommunity.org/index.php?lid=' + this.lid + '">Tweet about it on Twitter</a></p>';
-	text_share += '<p><img style="margin-bottom: -4px;" src="images/facebook_share.gif" /> <a target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid=' + this.lid + '">Share it on Facebook</a></p>';
-	text_share += '<p><img style="margin-bottom: -4px;" src="images/link_share.jpg" /> <a href="#" onclick="$(\'#link_code\').toggle(\'normal\');$(\'#embed_code\').hide(\'slow\'); return(false);">Email / Link to this Listing</a></p>';	
-	text_share += '<p id="link_code" style="display:none;">Cut and Paste the following code to link to this linsting: <br/>';
-	text_share += '<input type="text" style="width: 280px;" value="http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' + lat_lng.lng() + '&lid=' + this.lid + '" /></p>';		 
-
-	text_share += '<p><img style="margin-bottom: -4px;" src="images/embed_share.jpg" /> <a href="#" onclick="$(\'#embed_code\').toggle(\'normal\');$(\'#link_code\').hide(\'slow\'); return(false);">Embed this Listing / Map into your website</a></p>';	
-	text_share += '<p id="embed_code" style="display:none;">Cut and Paste the following code to embed this linsting: <br/>';
-	text_share += '<input type="text" style="width: 280px;" value="<iframe src=&quot;http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' 
-		+ lat_lng.lng() + '&lid=' + this.lid + '&quot; style=&quot;width: ' + width + 'px; height:' + height + 'px; border:none;&quot;></iframe>" /></p>';		 
-	text_share += '</div>';
-
-
-<div class="info_window" style="height: 130px; overflow:hide;">
-	<p><img style="margin-bottom: -4px;" src="images/twitter_share.png" /> <a target="_blank" href="http://twitter.com/home?status=Just found ' + this.name + '. http://victoriacommunity.org/index.php?lid=' + this.lid + '">Tweet about it on Twitter</a></p>
-	<p><img style="margin-bottom: -4px;" src="images/facebook_share.gif" /> <a target="_blank" href="http://www.facebook.com/sharer.php?u=http://victoriamycommunity.org/index.php?lid=' + this.lid + '">Share it on Facebook</a></p>
-	<p><img style="margin-bottom: -4px;" src="images/link_share.jpg" /> <a href="#" onclick="$(\'#link_code\').toggle(\'normal\');$(\'#embed_code\').hide(\'slow\'); return(false);">Email / Link to this Listing</a></p>	
-	<p id="link_code" style="display:none;">Cut and Paste the following code to link to this linsting: <br/>
-	<input type="text" style="width: 280px;" value="http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' + lat_lng.lng() + '&lid=' + this.lid + '" /></p>		 
-
-	<p><img style="margin-bottom: -4px;" src="images/embed_share.jpg" /> <a href="#" onclick="$(\'#embed_code\').toggle(\'normal\');$(\'#link_code\').hide(\'slow\'); return(false);">Embed this Listing / Map into your website</a></p>	
-	<p id="embed_code" style="display:none;">Cut and Paste the following code to embed this linsting: <br/>
-	<input type="text" style="width: 280px;" value="<iframe src=&quot;http://www.victoriamycommunity.org/index.php?zoom=' + map.getZoom() + '&lat=' + lat_lng.lat() + '&lng=' 
-		+ lat_lng.lng() + '&lid=' + this.lid + '&quot; style=&quot;width: ' + width + 'px; height:' + height + 'px; border:none;&quot;></iframe>" /></p>		 
-	</div>
-
-				-->
+				<div data-role="controlgroup"  id="share">
+					<a class="share href" data-role="button" target="_blank" href="http://twitter.com/home?status=Just found {name}. http://communityfinder.net/index.php?lid={id}"><img src="images/twitter_share.png" />  Tweet on Twitter</a>
+					<a class="share href" data-role="button" target="_blank" href="http://www.facebook.com/sharer.php?u=http://communityfinder.net/index.php?lid={id}"><img src="images/facebook_share.gif" />  Share on Facebook</a>
+					
+					
+						<a class="share href" data-role="button" href="mailto:?Subject=Check Out {name}&body=http://communityfinder.net/index.php%3Fzoom%3D{zoom}%26lat%3D{lat}%26lng%3D{lng}%26lid%3D{id}">
+						<img src="images/link_share.jpg" /> Email Link</a>
+				</div>
+				<p id="link_code">Cut and Paste the following code to link to this listing: <br/>
+			<input type="text" class="share value" value="http://communityfinder.net/index.php?zoom={zoom}&lat={lat}&lng={lng}&lid={id}" />
+				</p>					
 			</div>
 		</div>
 	</div>
