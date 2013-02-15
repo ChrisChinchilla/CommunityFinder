@@ -251,7 +251,7 @@
 					for(var i = 0; i < data.markers.length; i++){
 						var m = data.markers[i];
                       var m_data = {id: m.lid, latlng: {lat: m.lat, lng: m.lng, description: m.desc} };
-						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '<br/><span style="font-size:11px;">' + m.subtype + '</span><br/><span style="font-size:11px;">' + m.desc + '</span></a>'));
+						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '<br/><span style="font-size:0.8em;">' + m.subtype_name + '</span><br/><span style="font-size:0.8em;">' + m.desc + '</span></a>'));
 					}
 				}
 				$("#listItems").listview("refresh");
@@ -1064,15 +1064,9 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 
         <div data-role="content" id="map_canvas">
         </div><!-- /content -->
-       	<div id="item_summary">
-			<div data-role="controlgroup"  data-type="horizontal">
-				<a href="#listing_detail" onclick="openDetailsPage()" data-role="button" data-icon="info" data-iconpos="left" data-theme="c" data-inline="true" class="details">Item</a>
-				<!--
-				<a href="index.html" data-role="button" data-icon="arrow-l" data-iconpos="left" data-theme="c" data-inline="true">&nbsp;</a>
 
-				<a href="index.html" data-role="button" data-icon="arrow-r" data-iconpos="left" data-theme="c" data-inline="true">&nbsp;</a>
-				-->
-			</div>
+       	<div id="item_summary">
+			<a href="#listing_detail" onclick="openDetailsPage()" data-role="button" data-theme="c" class="details">Item</a>
         </div>
     </div><!-- /page -->
 
