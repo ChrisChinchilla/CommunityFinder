@@ -321,8 +321,7 @@
 		function setTimer(time){
 			resetTimer();
 			drag_timer = setTimeout(function(){ 
-				if(!config.add_marker)
-					loadMarkers($(MAP_ID).gmap('option', 'center')); 
+				loadMarkers($(MAP_ID).gmap('option', 'center')); 
 			}, (time ? time : 1000));
 		}
 		// dragging/zooming auto refresh functions - 0
