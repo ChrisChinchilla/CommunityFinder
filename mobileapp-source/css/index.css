@@ -121,7 +121,7 @@ h5#address
 
 #address, #type, #phone, #www, #description, #map_canvas_small
 {
-	font-size:0.9px;
+	font-size:0.9em;
 	font-weight:normal;
 }
 
