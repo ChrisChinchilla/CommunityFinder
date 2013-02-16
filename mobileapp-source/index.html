@@ -834,14 +834,10 @@ username: "user"
 		function isLoggedIn(){
 			$.post(config.prefix+'data/is_logged_in.php', {}, function(data) {
 				if($(data).find("response_state").attr("success") == 'true') {
-					console.log(data);
-					//that.email = $(data).find("user").attr("email");
-					//that.full_name = $(data).find("user").attr("full_name");
-					//that.username = $(data).find("user").attr("username");
-
-					//$(".show_logged_in").css("display", "block");
-					//$(".show_logged_out").css("display", "none");	
-					//$("span[id^='your_name']").html(that.full_name);
+					config.email = $(data).find("user").attr("email");
+					config.full_name = $(data).find("user").attr("full_name");
+					config.username = $(data).find("user").attr("username");
+					config.user_id = $(data).find("user").attr("user_id");
 				}
 			});	
 
@@ -971,6 +967,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 		}
 		
 		$(document).ready(function () {
+			isLoggedIn(); // check if user logged in
 			$("#item_summary .details").hide();
 
 			$("#inbox-page ul.list a").live('click', function(e){
@@ -1159,7 +1156,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 					<input id="txtSearch" data-mini="true" type="search" />
 				</div>
 				<div class="ui-block-b">
-					<input id="btnSearch" data-mini="true" type="button" value="Go" data-theme="b" />
+					<input id="btnSearch" data-mini="true" type="button" value="Filter" data-theme="b" />
 				</div>
 			</fieldset>
             
