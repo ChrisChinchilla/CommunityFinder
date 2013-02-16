@@ -90,13 +90,13 @@
 						mapLocation(location.geometry.location);
 						return;
 					case google.maps.GeocoderStatus.ZERO_RESULTS:
-						alert("No results found");
+						alert("Unrecognized location");
 						return;
 					case google.maps.GeocoderStatus.OVER_QUERY_LIMIT:
 						alert("Too many API calls...");
 						return; 
 					case google.maps.GeocoderStatus.REQUEST_DENIED:
-						alert("Request Denied. sensor not set?");
+						alert("Request Denied. Sensor not set?");
 						return;
 					case google.maps.GeocoderStatus.INVALID_REQUEST:
 						alert("Invalid request. Missing search location?");
@@ -202,10 +202,13 @@
 			
 			loadingMsg(true);
 			if(north_lat == south_lat || east_lng == west_lng){
+				
+				$(MAP_ID).gmap('option', 'center', new google.maps.LatLng( north_lat, east_lng));
 				north_lat += 0.05;
 				south_lat -= 0.05;
 				east_lng += 0.05;
 				west_lng -= 0.05;
+
 			}
 
 			// to fix 
@@ -250,8 +253,8 @@
 						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '<br/><span style="font-size:0.8em;">' + m.subtype_name + '</span><br/><span style="font-size:0.8em;">' + m.desc + '</span></a>'));
 					}
 				}
-				$("#listItems").listview("refresh");
-                $("#listItemsMessages").listview("refresh");
+				try{$("#listItems").listview("refresh")} catch(err){};;
+				try{$("#listItemsMessages").listview("refresh");} catch(err){};;                
                 loadMarkersFromList();
 				loadingMsg(false);
 			});
@@ -274,7 +277,7 @@
 						$("#listItems").append(jQuery("<li>").attr("data-gmapping", JSON.stringify(m_data)).html('<a class="info-box listing_link" data-parm="' + m.lid + '" href="#listing_detail" data-transition="fade">' + m.name + '</a>'));
 					}
 				}
-				$("#listItems").listview("refresh");
+				try{$("#listItems").listview("refresh")} catch(err){};;
 				loadingMsg(false);
 				$.mobile.changePage( "#search-page", { transition: "slide"} );
 
@@ -952,8 +955,24 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				}
 			);
 		}
+
+		function quickStart(){
+			mapMyLocation();
+			openSearchPage();
+			// openMapPage();
+		}
+		function mapMyLocation(e){
+			var position;
+
+			position = navigator.geolocation.getCurrentPosition(getCurrentLocation, 
+	            getLocationError, 
+	            { maximumAge: 3000, timeout: 15000, enableHighAccuracy: true });
+                   
+		}
 		
 		$(document).ready(function () {
+			$("#item_summary .details").hide();
+
 			$("#inbox-page ul.list a").live('click', function(e){
 				openConversationPage($(this).attr("data-url"));
 			});
@@ -985,14 +1004,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 				findLocationByName($("#txtLocation").val());
 			});
 			
-			$("#btnMyLocation").click(function(e){
-				var position;
-
-				position = navigator.geolocation.getCurrentPosition(getCurrentLocation, 
-                                         getLocationError, 
-                                         { maximumAge: 3000, timeout: 15000, enableHighAccuracy: true });
-                   
-			});
+			$("#btnMyLocation").click(mapMyLocation);
 			
 			// search - 0
 			
@@ -1008,7 +1020,7 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			// init map - 1
 			// http://code.google.com/p/jquery-ui-map/
 			$(MAP_ID).gmap({'center': DEFAULT_LOCATION, 'zoom': DEFAULT_ZOOM, 'mapTypeControl': false}).bind('init', function(evt, map) {
-				setTimer(1);
+				//setTimer(1);
 
 				$(map).click(function(e){
 					if(config.debug) console.log(e);
@@ -1032,8 +1044,8 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 			///////////////////////////////////////////////////////////////////////////
 			// main map page - 0
 			///////////////////////////////////////////////////////////////////////////
-			openMapPage();
-			openSearchPage();
+			//openMapPage();
+			//openSearchPage();
 		});
 
 
@@ -1053,7 +1065,82 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 </script>
 </head> 
 <body> 
+	<div data-role="page" id="start-page" data-add-back-btn="true">
+		<div data-role="header" data-theme="b">
+			<h3 style="white-space: normal; margin-left: 1em; margin-right: 1em;">
+			With Community Finder you can search, find and connect to the community around you...
+			</h3>
+		</div>
+			<div data-role="content">
 
+			<a href="#" onClick="quickStart(); return false"  data-icon="star" data-role="button" data-corners="false" data-theme="a">Quick start</a>
+			See whats around you now!
+
+			<fieldset class="ui-grid-a">
+			<div class="ui-block-a">
+			<a href="#search-page" onClick="openSearchPage();"  data-icon="search" data-role="button" data-corners="false" data-theme="a">Search</a>
+            <div style="padding: 0px 9px">Specify a location to search and filter by keyword</div>
+			</div>
+			<div class="ui-block-b">
+			<a href="#map-page" onClick="openMapPage();"  data-icon="globe" data-role="button" data-corners="false" data-theme="a">Map</a>
+			<div style="padding: 0px 9px">View the map and explore listings visually</div>
+			</div>
+			</fieldset>
+			<fieldset class="ui-grid-a">
+			<div class="ui-block-a">
+			<a href="#add-page" onClick="openAddPage()"  data-icon="plus" data-role="button" data-corners="false" data-theme="a">Add</a>
+			<div style="padding: 0px 9px">Touch the map to add a listing in that location</div>
+			</div>
+			<div class="ui-block-b">
+			<a href="#about-page" data-icon="info" data-role="button" data-corners="false" data-theme="a">About</a>
+			<div style="padding: 0px 9px">Find out about the Community Finder project and help information</div>
+			</div>
+			</fieldset>
+		</div><!-- /content -->
+	</div><!-- /page -->
+
+
+ 
+	<div data-role="page" id="about-page" data-add-back-btn="true">
+		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
+            <div data-role="navbar" >
+                <ul>
+                    <li><a href="#search-page" onClick="openSearchPage();" data-mini="true" data-icon="search">Search</a></li>
+                    <li><a href="#map-page" onClick="openMapPage();" data-mini="true" data-icon="globe">Map</a></li>
+                    <li><a href="#add-page" onClick="openAddPage()" data-mini="true" data-icon="plus">Add</a></li>
+                    <li><a href="#more" data-icon="menu" data-mini="true" data-rel="dialog" data-transition="slidedown">More</a></li>
+                </ul>
+            </div><!-- /navbar -->
+		</div><!-- /header -->
+
+		<div data-role="content">
+			<h1>Welcome to CommunityFinder.net</h1>
+
+			<p>CommunityFinder.net is a collaborative, locality based, community network, that allows you to connect with services, resources and groups in your community. The site uses a locality based interface that makes it easy to see whats happening in your area. Find resources, community groups, services, and events, discuss and rate information others have added, or add information about your community that others would find useful.</p>
+			 
+			<h3>Search, Browse and Find information about your community</h3>
+			<p>Once you've zoomed the map in to the area your interested in, use the search bar to filter and find specific information in that area. Or just browse through listings by clicking on them on the map.
+			</p>
+
+			<h3>Explore and Connect with the Information you find</h3>
+			<p>Once you've found a resource that you're interested in, there are a number of ways you can find out and connect to more information about that resource
+			<ul>
+				<li>Find out general information about a listing including its address and phone details
+				<li>Link through to associated websites / Wikipedia articles</li>
+				<li>Read and Bookmark groups twitter, news and blog feeds</li>
+				<li>Add Comments to the listing to provide more information for others to read</li>
+				<li>Share Information with friends on Facebook and Twitter</li>
+				<!--
+				<li>Contact the user or group that the listing is about, and find information about the user or group that added the listing to the network</li>
+				-->
+			</ul>
+			</p>
+
+			<h3>Add Information about your community:</h3>
+			<p>And if you know of a resource in your area that isn't 'on the map', you can add a listing about that resources yourself, by touch on the map where you want the listing to appear.
+			</p>
+		</div>
+	</div>
 	<div data-role="page" id="search-page" data-add-back-btn="true">
 		<div data-role="header" data-position="fixed" data-id="head" id="headbar">
             <div data-role="navbar" >
@@ -1358,6 +1445,8 @@ tags:,organic,transport,general,type of group:sustainability,type of group:type
 	        <a class="logged-in" href="#" onClick="loadMyMarkers()"data-theme="b" data-role="button">Your Listings</a>
 	        <br class="logged-in" >
 	        <a class="logged-in" href="#logout-page" data-theme="b" data-role="button" data-rel="dialog" >Logout</a>
+	        <br>
+	        <a href="#about-page" data-theme="b" data-role="button">About</a>
 	        <br>
 			<a href="#" data-role="button" data-rel="back" data-theme="a">Cancel</a>    
 		</div>
