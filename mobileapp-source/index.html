@@ -11,6 +11,14 @@
 	<!-- jquery mobile - 1 -->
 	<link rel="stylesheet"  href="css/jqm_themes/default/jquery.mobile-1.2.0.css" />
 	<script src="js/jquery-1.8.3.min.js"></script>
+	<script>
+		/*
+		$(document).on("mobileinit", function(){
+		  	$.mobile.buttonMarkup.hoverDelay = 10;
+		  	$.mobile.ajaxEnabled = false;
+		});	
+		//*/
+	</script>
 	<script src="js/jquery.mobile-1.2.0.min.js"></script>
 	<!-- jquery mobile - 0 -->
 
@@ -61,7 +69,10 @@
 	var config = {};
 		config.debug = true; // to print console logs
 		config.prefix = 'http://communityfinder.net/'; // for phonegap
-		//config.prefix = '../webapp-source/'; // for local testing when. comment out for deployment to phonegap
+		/*
+		if(window.location.hostname != 'communityfinder.net'){
+			config.prefix = '../webapp-source/'; // for local testing when. comment out for deployment to phonegap
+		}//*/
 		
 		userDataReset();
 
